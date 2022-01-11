@@ -1,0 +1,562 @@
+#ifndef SOLVER
+#define SOLVER
+
+
+// Use Eigen to diagonalize? Or LAPACK? Try Eigen.
+#include <Eigen/Dense>
+using namespace Eigen;
+
+#include <fstream>
+
+class Solver
+{
+public:
+  string dir;
+  int L, TWOL, Nh, Ns, nu;
+  int maxIndexValue;
+  int maxStateValue;
+  unsigned int twomax; //Are these used in  Solver?
+  vector<int> TWOLpow; //Are these used in  Solver?
+
+  double tl, tr, Jzl, Jzr, Jpml, Jpmr; //t, J_z and J_{\pm} for legs and rungs.
+
+  indexstate converttable;
+
+  Matrix<double,Dynamic,Dynamic> H;
+
+  Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvals;
+  Matrix<double,Dynamic,Dynamic> eigenvecs;
+
+  bool EIGVEC;
+
+
+  Solver();
+  Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0);
+
+  void makebasis();
+  void fillH();
+  void diagonalise();
+
+  unsigned int statevec_to_statenum(vector<short int> statevec);
+  vector<short int> statenum_to_statevec(unsigned int statenum);
+
+  vector<double> Szmat(int siteind);
+  double SzCorr(int i, int j);
+
+  double Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
+  double Sy2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
+  double Sz2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
+  double S2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
+
+  void WriteEigvals();
+  void WriteSzStot();
+  void resetdatafiles();
+
+};
+
+Solver::Solver(){}
+
+Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0)
+{
+  dir = dir0;
+
+  L = L0;
+  TWOL = 2*L;
+  Nh = Nh0;
+  nu = 0; //Default
+
+  tl = tl0;
+  tr = tr0;
+  Jzl = Jzl0;
+  Jzr = Jzr0;
+  Jpml = Jpml0;
+  Jpmr = Jpmr0;
+
+  EIGVEC = EIGVEC0;
+
+  Ns = TWOL - Nh;
+  twomax = 1<<Ns;
+  TWOLpow = vector<int>(Nh);
+  for (int i = 0; i < Nh; i++)
+  {
+    TWOLpow[i] = pow(TWOL, i);
+  }
+}
+
+
+void Solver::makebasis() //nu is number of up spins
+{
+  maxIndexValue = binomial(TWOL, Nh)*binomial(Ns, nu); //This is the number of states with Nh holes and nu up-spins.
+  converttable.init_index_to_state(maxIndexValue);
+
+  //Construct all states with nu up spins.
+
+  //How do I want to represent a state? Possibly as a vector with 2L numbers -1, 0 or 1? Or as a vector of length Nh and a binary number with the rest?
+  //Do it as a vector of length Nh and a binary number with the rest and translate it into spins on sites when computing quantities.
+  //For 0 and 1 hole I can do s + 2^(2L-Nh)*holeposition. But what to do for two or more holes? Think about this for later.
+
+  //First find all the possible binary numbers with nu ones. Loop over all numbers from 0 to 2^{2*L-Nh}
+
+  vector<unsigned int> s = {}; //List of all spin configurations with nu up spins.
+
+  //int nconf = 0;
+  for (int i = 0; i < twomax; i++)
+  {
+    int nunow = 0;
+    for (int j = 0; j < Ns; j++)
+    {
+      if (i >> j & 1) nunow += 1;
+    }
+    if (nunow == nu)
+    {
+      //cout << dectobin(i) << endl;
+      //nconf += 1;
+      s.push_back(i);
+    }
+  }
+
+  int NsStates = s.size(); //Seems to be correct.
+
+  short unsigned int index;
+  unsigned int state;
+  int maxStateValue = 0;
+
+  //Then combine these with all possible hole positions to create a number representing a state. And make lists converting between state numbers and matrix indices.
+  //Make an algorithm for general Nh:
+
+  vector<int> holeind(Nh+1);
+  vector<int> holemax(Nh+1);
+
+  for (int i = 0; i < Nh+1; i++)
+  {
+    holeind[i] = Nh-1-i;
+    holemax[i] = TWOL-i;
+  }
+  holeind[Nh] = 0;
+
+  int p = 0;
+
+  index = 0;
+  while (holeind[Nh] == 0)
+  {
+    /*for (int kk = 0; kk < Nh; kk++)
+    {
+      cout << holeind[kk] << "   ";
+    }
+    cout << endl;*/
+    for (int i = 0; i < NsStates; i++)
+    {
+      state = s[i];
+      for (int j = 0; j < Nh; j++)
+      {
+        state += twomax*(TWOLpow[j]*holeind[Nh-1-j]); //NOT SURE WHETHER I AM COMBINING THE CORRECT TWOLpow AND ind?!
+        //cout << TWOLpow[j] << "   " << holeind[Nh-1-j] << endl;
+      }
+      if (state > maxStateValue) maxStateValue = state;
+      converttable.index_to_state[index] = state;
+      //cout << state << endl;
+      index++;
+    }
+
+    holeind[0]++;
+    while (holeind[p] == holemax[p])
+    {
+      holeind[++p]++;
+      for (int q = p-1; q>=0; q--) holeind[q]=holeind[q+1]+1; //Feilen ligger her
+
+      if(holeind[p]!=holemax[p]){p=0;}
+    }
+  }
+
+  converttable.init_state_to_index(maxStateValue+1);
+  for (int i = 0; i < maxStateValue; i++) converttable.state_to_index[i] = maxIndexValue;
+  for (int i = 0; i < maxIndexValue; i++)
+  {
+    converttable.state_to_index[converttable.index_to_state[i]] = i;
+  }
+
+  /*
+  for (int i = 0; i < converttable.state_to_index.size(); i++)
+  {
+    cout << converttable.state_to_index[i] << endl;
+  }
+
+  for (int i = 0; i < converttable.index_to_state.size(); i++)
+  {
+    cout << converttable.index_to_state[i] << endl;
+  }
+  */
+
+  //I think these work??? Look over it again tomorrow.
+
+
+  //What to do about all the zeros which are not supposed to be zeros? I have set them to the maxIndexValue, i.e. out of range.
+}
+
+unsigned int Solver::statevec_to_statenum(vector<short int> statevec)
+{
+  int statenum = 0;
+
+  int spin = 0;
+  int holeexp = 0;
+
+  for (int i = 0; i < statevec.size(); i++)
+  {
+    if (statevec[i] == 0)
+    {
+      statenum += i*twomax*pow(TWOL, holeexp);
+      holeexp++;
+      continue;
+    }
+    spin = spin << 1;
+    if (statevec[i] == 1)
+    {
+      spin += 1;
+    }
+  }
+  statenum += spin;
+  return statenum;
+}
+
+vector<short int> Solver::statenum_to_statevec(unsigned int statenum)
+{
+  vector<short int> statevec(TWOL, -2);
+
+  unsigned int spin = statenum%twomax;
+
+  statenum /= twomax;
+  //cout << statenum << endl;
+
+  for (int i = 0; i < Nh; i++)
+  {
+    statevec[statenum/TWOLpow[Nh-1-i]] = 0;
+    statenum %= TWOLpow[Nh-1-i];
+  }
+
+  for (int i = TWOL-1; i >= 0; i--)
+  {
+    if (statevec[i] != 0)
+    {
+      statevec[i] += 1 + 2*(spin%2);
+      spin = spin >> 1;
+    }
+  }
+
+  return statevec;
+}
+
+void Solver::fillH()
+{
+  //Compute all elements of H for a given nu?
+
+  //maxIndexValue = binomial(2*L, Nh)*binomial(Ns, nu);
+
+  H.resize(maxIndexValue,maxIndexValue);
+  H.setZero();
+
+  unsigned int innumber;
+  vector<short int> instate;
+  vector<short int> holevec(Nh);
+  int holepos;
+  int neighpos;
+  int neigh2;
+  int additionalsign;
+
+  int j;
+
+  for (int i = 0; i < maxIndexValue; i++)
+  {
+
+    innumber = converttable.index_to_state[i];
+    instate = statenum_to_statevec(innumber);
+
+    innumber /= twomax;
+
+    for (int h = 0; h < Nh; h++)
+    {
+      holevec[Nh-1-h] = innumber/TWOLpow[Nh-1-h];
+      innumber %= TWOLpow[Nh-1-h];
+    }
+
+    //Diagonal terms are easy: SziSzj for Jleg and Jrung add a Delta to tune z-component?:
+
+    for (int site = 0; site < TWOL; site++)
+    {
+      H(i, i) += 0.25*2*Jzr*instate[site]*instate[(site+1)%TWOL]; //Should I include the 0.25 from s=1/2?
+      H(i, i) += 0.25*Jzl*instate[site]*instate[(site+2)%TWOL]; //Should I include the 0.25 from s=1/2?
+    }
+
+    //Off-diagonal terms:
+
+    //Heisenberg part:
+    //Nearest neighbours may flip if they are one up and one down.
+
+    for (int site = 0; site < TWOL; site++)
+    {
+      if (instate[site]*instate[(site+1)%TWOL] == -1)
+      {
+        instate[site] *= (-1);
+        instate[(site+1)%TWOL] *= (-1);
+
+        j = converttable.state_to_index[statevec_to_statenum(instate)];
+
+        H(i,j) += Jpmr;
+
+        instate[site] *= (-1);
+        instate[(site+1)%TWOL] *= (-1);
+      }
+      if (instate[site]*instate[(site+2)%TWOL] == -1)
+      {
+        instate[site] *= (-1);
+        instate[(site+2)%TWOL] *= (-1);
+
+        j = converttable.state_to_index[statevec_to_statenum(instate)];
+
+        H(i,j) += 0.5*Jpml;
+
+        instate[site] *= (-1);
+        instate[(site+2)%TWOL] *= (-1);
+      }
+    }
+
+    //Hopping part:
+    for (int neigh = -1; neigh < 2; neigh += 2)
+    {
+      neigh2 = 2*neigh;
+      for (int hole = 0; hole < Nh; hole++)
+      {
+        holepos = holevec[hole];
+
+        //Hop along rungs
+        neighpos = (holepos+neigh+TWOL)%TWOL;
+
+        if ((neigh == -1 && holepos == 0) || (neigh == +1 && holepos == TWOL-1)) {additionalsign = +1 + 2*(-1)*((TWOL-2-(Nh-1))%2);}
+        else {additionalsign = +1;}
+
+        instate[holepos] = instate[neighpos];
+        instate[neighpos] = 0;
+        j = converttable.state_to_index[statevec_to_statenum(instate)];
+
+        H(i,j) += -2*tr*additionalsign*abs(instate[holepos]);
+
+        instate[neighpos] = instate[holepos];
+        instate[holepos] = 0;
+
+
+        //Hop along legs.
+        neighpos = (holepos+neigh2+TWOL)%TWOL;
+
+        if ((neigh2 == -2 && holepos == 0) || (neigh2 == +2 && holepos == TWOL-2)){additionalsign = (+1) + 2*(-1)*((TWOL-3-(Nh-1+(abs(instate[TWOL-1])-1)))%2);}
+        else if ((neigh2 == -2 && holepos == 1) || (neigh2 == +2 && holepos == TWOL-1)) {additionalsign = (+1) + 2*(-1)*((TWOL-3-(Nh-1+(abs(instate[0])-1)))%2);}
+        else if (instate[(holepos+neigh+TWOL)%TWOL] == 0) {additionalsign = +1;}
+        else {additionalsign = -1;}
+
+        instate[holepos] = instate[neighpos];
+        instate[neighpos] = 0;
+        j = converttable.state_to_index[statevec_to_statenum(instate)];
+        H(i,j) += -tl*additionalsign*abs(instate[holepos]);
+        //cout << i << "   " << j << "   " << -tl*additionalsign*abs(instate[holepos]) << endl;
+
+        instate[neighpos] = instate[holepos];
+        instate[holepos] = 0;
+      }
+    }
+  }
+
+
+  return;
+}
+
+void Solver::diagonalise()
+{
+  SelfAdjointEigenSolver<Matrix<double,Dynamic,Dynamic>> es;
+  if (EIGVEC)
+  {
+    es = SelfAdjointEigenSolver<Matrix<double,Dynamic,Dynamic>>(H,ComputeEigenvectors);
+    eigenvecs = es.eigenvectors();
+  }
+  else {es = SelfAdjointEigenSolver<Matrix<double,Dynamic,Dynamic>>(H,EigenvaluesOnly);}
+
+  eigenvals = es.eigenvalues();
+
+  return;
+}
+
+vector<double> Solver::Szmat(int siteind)
+{
+  //Sovle it as a sparse matrix maybe? It is diagonal?
+  vector<double> ans(maxIndexValue);
+  double statenumber;
+  vector<short int> statevec;
+
+  for (int i = 0; i < maxIndexValue; i++)
+  {
+    statenumber = converttable.index_to_state[i];
+    statevec = statenum_to_statevec(statenumber);
+    ans[i] = 0.5*statevec[siteind];
+  }
+
+  return ans;
+}
+
+double Solver::SzCorr(int i, int j)
+{
+  double SzSz = 0;
+
+  double nSzim = 0;
+  double mSzjn = 0;
+
+  //Compute SzSz correlations between site i and all other sites.
+  vector<double> Szi = Szmat(i);
+  vector<double> Szj = Szmat(j);
+
+  for (int n = 0; n < maxIndexValue; n++)
+  {
+    for (int m = 0; m < maxIndexValue; m++)
+    {
+      for (int alpha = 0; alpha < maxIndexValue; alpha ++)
+      {
+        //This is probably an extremely stupid way to do this?
+        nSzim += eigenvecs.col(n)[alpha]*Szi[alpha]*eigenvecs.col(m)[alpha];
+        mSzjn += eigenvecs.col(m)[alpha]*Szj[alpha]*eigenvecs.col(n)[alpha];
+      }
+      SzSz += nSzim*mSzjn;
+      nSzim = 0; mSzjn = 0;
+    }
+  }
+  return SzSz;
+}
+
+double Solver::Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
+{
+
+  //double Solver::Sx2(vector<double> statecoeffs, vector<double> statenumbers)
+
+  //Compute Sx2 for a state with statecoeffs and corresponding statenumbers. I.e. state coeffs gives the coefficients for the different basis states found in statenumbers.
+
+  //I guess I already have the statenumbers if i calculate Sx2 when I am computing the eigenvalues?
+  double ans = 0;
+  double maxstatenum = (Nh == 0) ? twomax : twomax*(1 + TWOL*TWOLpow[-1]*Nh); //This is an overestimation for Nh>0!
+  vector<double> intermediatestates(maxstatenum, 0.0);
+
+  vector<short int> statevec;
+  vector<short int> outvec;
+  unsigned int outnum;
+
+  for(int i = 0; i < maxIndexValue; i++)
+  {
+    statevec = statenum_to_statevec(converttable.index_to_state[i]);
+
+    for(int j = 0; j < TWOL; j++)
+    {
+      outvec = statevec;
+      if(abs(statevec[j]) == +1)
+      {
+        outvec[j] *= (-1);
+        outnum = statevec_to_statenum(outvec);
+        intermediatestates[outnum] += statecoeffs[i];
+      }
+    }
+  }
+
+  for(int i = 0; i < intermediatestates.size(); i++)
+  {
+    ans += intermediatestates[i]*intermediatestates[i];
+  }
+
+  return ans*0.25;
+}
+
+double Solver::Sy2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
+{
+  //Compute Sy2 for a state with statecoeffs and corresponding statenumbers. I.e. state coeffs gives the coefficients for the different basis states found in statenumbers.
+
+  //I guess I already have the statenumbers if i calculate Sy2 when I am computing the eigenvalues?
+
+  double ans = 0;
+  double maxstatenum = (Nh == 0) ? twomax : twomax*(1 + TWOL*TWOLpow[-1]*Nh); //This is an overestimation for Nh>0!
+  vector<double> intermediatestates(maxstatenum, 0.0);
+
+  vector<short int> statevec;
+  vector<short int> outvec;
+  unsigned int outnum;
+
+  for(int i = 0; i < maxIndexValue; i++)
+  {
+    statevec = statenum_to_statevec(converttable.index_to_state[i]);
+
+    for(int j = 0; j < TWOL; j++) //For each site
+    {
+      outvec = statevec;
+      if(abs(statevec[j]) == +1)
+      {
+        outvec[j] *= (-1);
+        outnum = statevec_to_statenum(outvec);
+        intermediatestates[outnum] += -statevec[j]*statecoeffs[i];
+      }
+    }
+  }
+
+  for(int i = 0; i < intermediatestates.size(); i++)
+  {
+    ans += intermediatestates[i]*intermediatestates[i];
+  }
+
+  return ans*0.25;
+}
+
+double Solver::Sz2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
+{
+  //Compute Sz2 for a state with statecoeffs and corresponding statenumbers. I.e. state coeffs gives the coefficients for the different basis states found in statenumbers.
+
+  //I think this just is summing the squares of the statecoeffs and mulitply by 0.25?
+  //How does that make sense. Aren't the statecoeffs normalised?! Yes, it does not make sense, you need to include the total Sz?
+  // So for a given nu, Sz2 is just 0.25*(2*nu - Ns)**2
+
+  return 0.25*(2*nu - Ns)*(2*nu - Ns);
+}
+
+double Solver::S2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
+{
+  return Sx2(statecoeffs) + Sy2(statecoeffs) + Sz2(statecoeffs);
+}
+
+
+void Solver::WriteEigvals()
+{
+  ofstream Outfile(dir + "eigvals.txt", std::ios_base::app);
+  if (!Outfile.is_open())
+     cout<<"Could not open file" << endl;
+
+  Outfile.precision(17);
+  Outfile << nu << "      " << eigenvals.transpose() << "\n";
+}
+
+
+void Solver::WriteSzStot()
+{
+  ofstream Outfile(dir + "SzStot.txt", std::ios_base::app);
+  if (!Outfile.is_open())
+     cout<<"Could not open file" << endl;
+
+  Outfile.precision(17);
+  for(int i = 0; i < maxIndexValue; i++)
+  {
+    Outfile << Sz2(eigenvecs.col(i)) << "   " << S2(eigenvecs.col(i)) << endl;
+  }
+  Outfile << "\n";
+}
+
+
+void Solver::resetdatafiles()
+{
+  ofstream EigFile(dir + "eigvals.txt");
+  if (!EigFile.is_open())
+     cout<<"Could not open file" << endl;
+
+  ofstream SFile(dir + "SzStot.txt");
+  if (!SFile.is_open())
+    cout<<"Could not open file" << endl;
+}
+
+#endif

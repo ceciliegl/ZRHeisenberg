@@ -1,0 +1,12 @@
+L = 6
+Nh = 0
+
+tl = 1.0
+tr = 1.0
+Jzl = -1.0
+Jzr = -1.0
+Jpml = -1.0
+Jpmr = -1.0
+
+EIGVECS = 0
+RESETOLDFILES = 1
