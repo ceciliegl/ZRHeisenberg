@@ -67,6 +67,8 @@ int main(int argc, char const *argv[])
 
   mysolver.solve();
 
+  cout << "Hei" << endl;
+
   /*for (int mynu = 1; mynu < maxnu; mynu++)
   {
     //cout << "Making basis..." << endl;
