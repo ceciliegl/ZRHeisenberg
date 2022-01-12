@@ -53,21 +53,19 @@ int main(int argc, char const *argv[])
 
   vector<double> Sz0Szj(2*params.L, 0.0);
 
-  int maxnu = 2*params.L+1-params.Nh;
+  /*int maxnu = 2*params.L+1-params.Nh;
 
   vector<double> mineigvals(maxnu);
   vector<double> partfunc(maxnu);       //Partition function for each magnetisation sector, scaled by e^(-beta mineigvals)
 
   Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp;
   Matrix<double,Dynamic,Dynamic> eigvecsp;
-  indexstate converttablep;
+  indexstate converttablep;*/
 
   //vector<Eigen::Matrix<double, -1, 1, 0, -1, 1>> allvals(maxnu);
   //vector<Matrix<double,Dynamic,Dynamic>> allvecs(maxnu);
 
   mysolver.solve();
-
-  cout << "Hei" << endl;
 
   /*for (int mynu = 1; mynu < maxnu; mynu++)
   {
@@ -111,15 +109,15 @@ int main(int argc, char const *argv[])
 
     //partfunc += partitionfunction(mysolver.eigenvals, 100000); //Need to do something smart here to normalise w.r.t. the smallest eigenvalue?
 
-    /*for (int j = 0; j < 2*params.L; j++)
+    for (int j = 0; j < 2*params.L; j++)
     {
       Sz0Szj[j] += mysolver.SzCorr(0, j)/partfunc;
-    }*/
+    }
 
-    partfunc[mynu] = partitionfunction(mysolver.eigenvals, beta);
+    //partfunc[mynu] = partitionfunction(mysolver.eigenvals, beta);
 
-    mysolver.WriteEigvals();
-    mysolver.WriteSzStot();
+    //mysolver.WriteEigvals();
+    //mysolver.WriteSzStot();
 
     //Thinking a bout a way to only save some eigenvalues and eigenvectors at a time
 
@@ -132,7 +130,7 @@ int main(int argc, char const *argv[])
     eigvecsp = mysolver.eigenvecs;
     converttablep = mysolver.converttable;
 
-  }*/
+  }
 
   double GS = findminimum(mineigvals);
   double partitionfunction = 0;
@@ -140,9 +138,9 @@ int main(int argc, char const *argv[])
   {
     cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
     partitionfunction += partfunc[i]*exp(-beta*(mineigvals[i]-GS));//Sould double check this for a small system?
-  }
+  }*/
 
-  cout << partitionfunction;
+  //cout << partitionfunction;
 
   //Having all the eigenvalues and eigenvectors, I can compute anything.
   //Compute Sx^2:

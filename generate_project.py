@@ -30,7 +30,8 @@ Jzr    = -1*np.ones(nruns)
 Jpml   = -1*np.ones(nruns)
 Jpmr   = -1*np.ones(nruns)
 
-EIGVECS = 1
+EIGVECS = 1         #Compute eigenvectors?
+CORR = 1            #Compute correlations?
 
 RESETOLDFILES = 1
 

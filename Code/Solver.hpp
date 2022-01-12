@@ -27,11 +27,11 @@ public:
   Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvals;
   Matrix<double,Dynamic,Dynamic> eigenvecs;
 
-  bool EIGVEC;
+  bool EIGVEC, CORR;
 
 
   Solver();
-  Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0, bool CORR);
+  Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0, bool CORR0);
 
   void solve();
   void makebasis();
@@ -59,7 +59,7 @@ public:
 
 Solver::Solver(){}
 
-Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0, bool CORR)
+Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0, bool CORR0)
 {
   dir = dir0;
 
@@ -76,6 +76,7 @@ Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0
   Jpmr = Jpmr0;
 
   EIGVEC = EIGVEC0;
+  CORR = CORR0;
 
   Ns = TWOL - Nh;
   twomax = 1<<Ns;
@@ -89,6 +90,13 @@ Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0
 
 void Solver::solve()
 {
+  vector<double> mineigvals(Ns+1);
+  vector<double> partfunc(Ns+1);       //Partition function for each magnetisation sector, scaled by e^(-beta mineigvals)
+
+  Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp;
+  Matrix<double,Dynamic,Dynamic> eigvecsp;
+  indexstate converttablep;
+
   //Do nu=0 first:
   nu = 0;
   makebasis();
@@ -105,7 +113,7 @@ void Solver::solve()
     converttablep = converttable;
   }
 
-  for (int mynu = 1; mynu < maxnu; mynu++)
+  for (int mynu = 1; mynu < Ns+1; mynu++)
   {
     nu = mynu;
     makebasis();
@@ -125,8 +133,16 @@ void Solver::solve()
       eigvalsp = eigenvals;
       eigvecsp = eigenvecs;
       converttablep = converttable;
-      Matrix<double, Dynamic, Dynamic> Sminus = makeSminus();
+      Matrix<double, Dynamic, Dynamic> Sminus = makeSminus(converttablep);
     }
+  }
+
+  double GS = findminimum(mineigvals);
+  double partitionfunction = 0;
+  for(int i = 0; i < Ns+1; i++)
+  {
+    cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
+    partitionfunction += partfunc[i]*exp(-beta*(mineigvals[i]-GS));//Sould double check this for a small system?
   }
 }
 
@@ -509,7 +525,8 @@ double Solver::SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat
   Eigen::Matrix<double, -1, 1, 0, -1, 1> Sminusi = Sminusmat.col(i);
   Eigen::Matrix<double, -1, 1, 0, -1, 1> Sminusj = Sminusmat.col(j);
 
-  double W, totsum, sumi, sumj;
+  complex<double> W, totsum;
+  double sumi, sumj;
 
 
 
@@ -517,7 +534,7 @@ double Solver::SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat
   {
     for(int m = 0; m < converttablep.MaxIndex; m++)
     {
-      W = 0.5*(exp(-beta*eigenvals[n])); //IKKE FERDIG
+      W = 0.5*(exp(-beta*eigenvals[n])*exponential(-(eigenvals[n]-eigvalsp[m])*t)+exp(-beta*eigenvals[m])*exponential(-(eigenvals[m]-eigvalsp[n])*t)); //Exponential legger til en i i eksponenten.
       sumi = 0;
       sumj = 0;
       for(int alpha = 0; alpha < maxIndexValue; alpha++)
