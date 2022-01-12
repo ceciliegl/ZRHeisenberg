@@ -31,8 +31,9 @@ public:
 
 
   Solver();
-  Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0);
+  Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0, bool CORR);
 
+  void solve();
   void makebasis();
   void fillH();
   void diagonalise();
@@ -42,6 +43,8 @@ public:
 
   vector<double> Szmat(int siteind);
   double SzCorr(int i, int j);
+  Matrix<double, Dynamic, Dynamic> makeSminus(indexstate converttablep);
+  double SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp, Matrix<double,Dynamic,Dynamic> eigvecsp, indexstate converttablep, double beta, double t);
 
   double Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
   double Sy2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
@@ -56,7 +59,7 @@ public:
 
 Solver::Solver(){}
 
-Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0)
+Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0, double Jzr0, double Jpml0, double Jpmr0, bool EIGVEC0, bool CORR)
 {
   dir = dir0;
 
@@ -80,6 +83,50 @@ Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0
   for (int i = 0; i < Nh; i++)
   {
     TWOLpow[i] = pow(TWOL, i);
+  }
+}
+
+
+void Solver::solve()
+{
+  //Do nu=0 first:
+  nu = 0;
+  makebasis();
+  fillH();
+  diagonalise();
+  mineigvals[0] = eigenvals[0];
+  partfunc[0] = partitionfunction(eigenvals, beta);
+  WriteEigvals();
+  WriteSzStot();
+  if(CORR)
+  {
+    eigvalsp = eigenvals;
+    eigvecsp = eigenvecs;
+    converttablep = converttable;
+  }
+
+  for (int mynu = 1; mynu < maxnu; mynu++)
+  {
+    nu = mynu;
+    makebasis();
+    fillH();
+    diagonalise();
+    mineigvals[mynu] = eigenvals[0];
+
+    partfunc[mynu] = partitionfunction(eigenvals, beta);
+
+    WriteEigvals();
+    WriteSzStot();
+
+    //Compute correlations here!
+
+    if(CORR)
+    {
+      eigvalsp = eigenvals;
+      eigvecsp = eigenvecs;
+      converttablep = converttable;
+      Matrix<double, Dynamic, Dynamic> Sminus = makeSminus();
+    }
   }
 }
 
@@ -425,6 +472,64 @@ double Solver::SzCorr(int i, int j)
     }
   }
   return SzSz;
+}
+
+Matrix<double, Dynamic, Dynamic> Solver::makeSminus(indexstate converttablep)
+{
+  Matrix<double, Dynamic, Dynamic> Sminusmat(maxIndexValue, TWOL); //Matrix with one row for each basis state in the current mag sector and one column for each site i.
+
+  vector<short int> statevec;
+  double statenum;
+
+  for(int i = 0; i < TWOL; i++)
+  {
+    for(int alpha = 0; alpha < maxIndexValue; alpha++)
+    {
+      statevec = statenum_to_statevec(converttable.index_to_state[alpha]);
+      if(statevec[i] == +1)
+      {
+        statevec[i] = -1;
+        statenum = statevec_to_statenum(statevec);
+        Sminusmat(alpha, i) = converttablep.state_to_index[statenum];
+      }
+    }
+  }
+
+  return Sminusmat;
+}
+
+double Solver::SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp, Matrix<double,Dynamic,Dynamic> eigvecsp, indexstate converttablep, double beta, double t)
+{
+  //Compute the correlations in the xy plane: SxiSxj + SyiSyj.
+
+  //Only for one magnetisation sector. All mag sectors need to be added and divided by the partition function.
+  //Will scale each term by the minimal energy in the corresponding sector.
+
+
+  Eigen::Matrix<double, -1, 1, 0, -1, 1> Sminusi = Sminusmat.col(i);
+  Eigen::Matrix<double, -1, 1, 0, -1, 1> Sminusj = Sminusmat.col(j);
+
+  double W, totsum, sumi, sumj;
+
+
+
+  for(int n = 0; n < maxIndexValue; n++)
+  {
+    for(int m = 0; m < converttablep.MaxIndex; m++)
+    {
+      W = 0.5*(exp(-beta*eigenvals[n])); //IKKE FERDIG
+      sumi = 0;
+      sumj = 0;
+      for(int alpha = 0; alpha < maxIndexValue; alpha++)
+      {
+        sumj += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusj[alpha]];
+        sumi += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusi[alpha]];
+      }
+      totsum += W*sumi*sumj;
+    }
+  }
+
+  return 0;
 }
 
 double Solver::Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)

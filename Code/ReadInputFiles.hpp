@@ -11,7 +11,7 @@ public:
   int L, Nh;
   double tl, tr, Jzl, Jzr, Jpml, Jpmr;
 
-  bool EIGVECS;
+  bool EIGVECS, CORR;
   bool RESETFILES;
 
   ReadInputFiles(string filename_param);
@@ -39,6 +39,7 @@ void ReadInputFiles::generate()
   parameters >> nothing >> nothing >> Nh;
   parameters >> nothing >> nothing >> tl; parameters >> nothing >> nothing >> tr; parameters >> nothing >> nothing >> Jzl; parameters >> nothing >> nothing >> Jzr; parameters >> nothing >> nothing >> Jpml; parameters >> nothing >> nothing >> Jpmr;
   parameters >> nothing >> nothing >> EIGVECS;
+  parameters >> nothing >> nothing >> CORR;
   parameters >> nothing >> nothing >> RESETFILES;
 
   parameters.close();

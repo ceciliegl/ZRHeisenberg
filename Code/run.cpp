@@ -46,7 +46,7 @@ int main(int argc, char const *argv[])
   ReadInputFiles params(folder + "parameters.txt");
   params.generate();
 
-  Solver mysolver(folder, params.L, params.Nh, params.tl, params.tr, params.Jzl, params.Jzr, params.Jpml, params.Jpmr, params.EIGVECS);
+  Solver mysolver(folder, params.L, params.Nh, params.tl, params.tr, params.Jzl, params.Jzr, params.Jpml, params.Jpmr, params.EIGVECS, params.CORR);
   //PrintFunctions printer(folder, mysolver);
 
   if (params.RESETFILES) mysolver.resetdatafiles();
@@ -65,33 +65,16 @@ int main(int argc, char const *argv[])
   //vector<Eigen::Matrix<double, -1, 1, 0, -1, 1>> allvals(maxnu);
   //vector<Matrix<double,Dynamic,Dynamic>> allvecs(maxnu);
 
-  //Do nu=0 first:
-  mysolver.nu = 0;
-  mysolver.makebasis();
-  mysolver.fillH();
-  mysolver.diagonalise();
-  mineigvals[0] = mysolver.eigenvals[0];
-  partfunc[0] = partitionfunction(mysolver.eigenvals, beta);
-  mysolver.WriteEigvals();
-  mysolver.WriteSzStot();
-  eigvalsp = mysolver.eigenvals;
-  eigvecsp = mysolver.eigenvecs;
-  converttablep = mysolver.converttable;
+  mysolver.solve();
 
-  for (int mynu = 1; mynu < maxnu; mynu++)
+  /*for (int mynu = 1; mynu < maxnu; mynu++)
   {
     //cout << "Making basis..." << endl;
 
     mysolver.nu = mynu;
-    mysolver.makebasis();
+    mysolver.solve();
 
-    //cout << "Constructing H..." << endl;
-
-    mysolver.fillH();
-
-    //cout << "Før diagonalisering" << endl;
-
-    /*cout << fixed << setprecision(2) << setfill('0');
+    cout << fixed << setprecision(2) << setfill('0');
 
     for (int i = 0; i < mysolver.maxIndexValue; i++)
     {
@@ -100,14 +83,13 @@ int main(int argc, char const *argv[])
         cout << setw(5) << mysolver.H(i, j) << "   ";
       }
       cout << endl;
-    }*/
+    }
 
     //cout << "Diagonalising..." << endl;
 
     //double start = clock(); //start clock
 
     //SelfAdjointEigenSolver<Matrix<double,Dynamic,Dynamic>> es(solver.H,ComputeEigenvectors);
-    mysolver.diagonalise();
 
     mineigvals[mynu] = mysolver.eigenvals[0];
 
@@ -148,8 +130,7 @@ int main(int argc, char const *argv[])
     eigvecsp = mysolver.eigenvecs;
     converttablep = mysolver.converttable;
 
-
-  }
+  }*/
 
   double GS = findminimum(mineigvals);
   double partitionfunction = 0;

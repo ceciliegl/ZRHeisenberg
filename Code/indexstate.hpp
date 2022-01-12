@@ -7,6 +7,9 @@ class indexstate
 {
 public:
 
+  int MaxIndex;
+  int MaxState;
+
   vector<short unsigned int> state_to_index;
   vector<unsigned int> index_to_state;
 
@@ -20,6 +23,8 @@ indexstate::indexstate(){}
 
 indexstate::indexstate(int MaxIndex0, int MaxState0)
 {
+  MaxIndex = MaxIndex0;
+  MaxState = MaxState0;
   index_to_state = vector<unsigned int>(MaxIndex0);
   state_to_index = vector<short unsigned int>(MaxState0);
 }
