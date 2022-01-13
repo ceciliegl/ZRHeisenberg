@@ -6,6 +6,8 @@
 #include <Eigen/Dense>
 using namespace Eigen;
 
+#include "Quantities.hpp"
+
 #include <fstream>
 
 class Solver
@@ -97,6 +99,9 @@ void Solver::solve()
   Matrix<double,Dynamic,Dynamic> eigvecsp;
   indexstate converttablep;
 
+  double beta = 100000;
+  double t = 0;
+
   //Do nu=0 first:
   nu = 0;
   makebasis();
@@ -138,10 +143,10 @@ void Solver::solve()
   }
 
   double GS = findminimum(mineigvals);
-  double partitionfunction = 0.0;
+  double partitionfunction = 0;
   for(int i = 0; i < Ns+1; i++)
   {
-    cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
+    //cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
     partitionfunction += partfunc[i]*exp(-beta*(mineigvals[i]-GS));//Sould double check this for a small system?
   }
 }
@@ -640,7 +645,9 @@ double Solver::Sz2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
 
 double Solver::S2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
 {
-  return Sx2(statecoeffs) + Sy2(statecoeffs) + Sz2(statecoeffs);
+  double ans = Sx2(statecoeffs) + Sy2(statecoeffs) + Sz2(statecoeffs);
+  cout << ans << endl;
+  return 0.5*(-1+sqrt(1+4*ans));
 }
 
 
@@ -664,7 +671,7 @@ void Solver::WriteSzStot()
   Outfile.precision(17);
   for(int i = 0; i < maxIndexValue; i++)
   {
-    Outfile << Sz2(eigenvecs.col(i)) << "   " << S2(eigenvecs.col(i)) << endl;
+    Outfile << 0.5*(2*nu - Ns) << "   " << S2(eigenvecs.col(i)) << endl;
   }
   Outfile << "\n";
 }

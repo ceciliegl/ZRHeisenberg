@@ -49,7 +49,7 @@ int main(int argc, char const *argv[])
   Solver mysolver(folder, params.L, params.Nh, params.tl, params.tr, params.Jzl, params.Jzr, params.Jpml, params.Jpmr, params.EIGVECS, params.CORR);
   //PrintFunctions printer(folder, mysolver);
 
-  if (params.RESETFILES) mysolver.resetdatafiles();
+  if(params.RESETFILES){mysolver.resetdatafiles();}
 
   vector<double> Sz0Szj(2*params.L, 0.0);
 

@@ -125,6 +125,10 @@ for run in range(runmin, nruns + runmin):
     outfile.write(str(EIGVECS))
     outfile.write("\n")
 
+    outfile.write("CORR = ")
+    outfile.write(str(CORR))
+    outfile.write("\n")
+
     outfile.write("RESETOLDFILES = ")
     outfile.write(str(RESETOLDFILES))
     outfile.write("\n")
