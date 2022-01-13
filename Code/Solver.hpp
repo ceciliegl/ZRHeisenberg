@@ -138,7 +138,7 @@ void Solver::solve()
   }
 
   double GS = findminimum(mineigvals);
-  double partitionfunction = 0;
+  double partitionfunction = 0.0;
   for(int i = 0; i < Ns+1; i++)
   {
     cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
