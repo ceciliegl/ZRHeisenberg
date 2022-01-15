@@ -94,6 +94,8 @@ void Solver::solve()
 {
   vector<double> mineigvals(Ns+1);
   vector<double> partfunc(Ns+1);       //Partition function for each magnetisation sector, scaled by e^(-beta mineigvals)
+  vector<double> corrfuncz(Ns+1);       //Correlation functions for each magnetisation sector.
+  vector<double> corrfuncpm(Ns+1);       //Correlation functions for each magnetisation sector.
 
   Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp;
   Matrix<double,Dynamic,Dynamic> eigvecsp;
@@ -116,7 +118,11 @@ void Solver::solve()
     eigvalsp = eigenvals;
     eigvecsp = eigenvecs;
     converttablep = converttable;
+
+    for(int j = 0; j < TWOL; j++) corrfuncz[0][j] = SzCorr(0, j); //Only contribution from Sz?
   }
+
+  Matrix<double, Dynamic, Dynamic> Sminus;
 
   for (int mynu = 1; mynu < Ns+1; mynu++)
   {
@@ -128,6 +134,9 @@ void Solver::solve()
 
     partfunc[mynu] = partitionfunction(eigenvals, beta);
 
+    corrfuncz[mynu] = 0;
+    corrfuncpm[mynu] = 0;
+
     WriteEigvals();
     WriteSzStot();
 
@@ -138,7 +147,7 @@ void Solver::solve()
       eigvalsp = eigenvals;
       eigvecsp = eigenvecs;
       converttablep = converttable;
-      Matrix<double, Dynamic, Dynamic> Sminus = makeSminus(converttablep);
+      Sminus = makeSminus(converttablep);
     }
   }
 
