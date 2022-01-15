@@ -44,9 +44,9 @@ public:
   vector<short int> statenum_to_statevec(unsigned int statenum);
 
   vector<double> Szmat(int siteind);
-  double SzCorr(int i, int j);
+  complex<double> SzCorr(int i, int j, double beta, double t);
   Matrix<double, Dynamic, Dynamic> makeSminus(indexstate converttablep);
-  double SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp, Matrix<double,Dynamic,Dynamic> eigvecsp, indexstate converttablep, double beta, double t);
+  complex<double> SpmCorr(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp, Matrix<double,Dynamic,Dynamic> eigvecsp, indexstate converttablep, double beta, double t);
 
   double Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
   double Sy2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
@@ -94,8 +94,14 @@ void Solver::solve()
 {
   vector<double> mineigvals(Ns+1);
   vector<double> partfunc(Ns+1);       //Partition function for each magnetisation sector, scaled by e^(-beta mineigvals)
-  vector<double> corrfuncz(Ns+1);       //Correlation functions for each magnetisation sector.
-  vector<double> corrfuncpm(Ns+1);       //Correlation functions for each magnetisation sector.
+  vector<vector<complex<double>>> corrfuncz(Ns+1);       //Correlation functions for each magnetisation sector.
+  vector<vector<complex<double>>> corrfuncpm(Ns+1);       //Correlation functions for each magnetisation sector.
+
+  for(int i = 0; i < Ns+1; i++)
+  {
+    corrfuncz[i] = vector<complex<double>>(TWOL-1);
+    corrfuncpm[i] = vector<complex<double>>(TWOL-1);
+  }
 
   Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp;
   Matrix<double,Dynamic,Dynamic> eigvecsp;
@@ -119,7 +125,7 @@ void Solver::solve()
     eigvecsp = eigenvecs;
     converttablep = converttable;
 
-    for(int j = 0; j < TWOL; j++) corrfuncz[0][j] = SzCorr(0, j); //Only contribution from Sz?
+    for(int j = 0; j < TWOL; j++) corrfuncz[0][j] = SzCorr(0, j, beta, t); //Only contribution from Sz?
   }
 
   Matrix<double, Dynamic, Dynamic> Sminus;
@@ -134,9 +140,6 @@ void Solver::solve()
 
     partfunc[mynu] = partitionfunction(eigenvals, beta);
 
-    corrfuncz[mynu] = 0;
-    corrfuncpm[mynu] = 0;
-
     WriteEigvals();
     WriteSzStot();
 
@@ -148,15 +151,28 @@ void Solver::solve()
       eigvecsp = eigenvecs;
       converttablep = converttable;
       Sminus = makeSminus(converttablep);
+
+      for(int j = 0; j < TWOL; j++)
+      {
+        corrfuncz[mynu][j] = SzCorr(0, j, beta, t);
+        corrfuncpm[mynu][j] = SpmCorr(0, j, Sminus, eigvalsp, eigvecsp, converttablep, beta, t);
+      }
     }
   }
 
   double GS = findminimum(mineigvals);
   double partitionfunction = 0;
+  vector<complex<double>> corrz(TWOL-1, {0.0, 0.0});
+  vector<complex<double>> corrpm(TWOL-1, {0.0, 0.0});
   for(int i = 0; i < Ns+1; i++)
   {
     //cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
     partitionfunction += partfunc[i]*exp(-beta*(mineigvals[i]-GS));//Sould double check this for a small system?
+    for(int j = 0; j < TWOL; j++)
+    {
+      corrz[j] += corrfuncz[i][j]*exp(-beta*(mineigvals[i]-GS));
+      corrpm[j] += corrfuncpm[i][j]*exp(-beta*(mineigvals[i]-GS));
+    }
   }
 }
 
@@ -476,12 +492,14 @@ vector<double> Solver::Szmat(int siteind)
   return ans;
 }
 
-double Solver::SzCorr(int i, int j)
+complex<double> Solver::SzCorr(int i, int j, double beta, double t)
 {
-  double SzSz = 0;
+  complex<double> SzSz = 0;
 
   double nSzim = 0;
   double mSzjn = 0;
+
+  double minval = eigenvals[0];
 
   //Compute SzSz correlations between site i and all other sites.
   vector<double> Szi = Szmat(i);
@@ -497,7 +515,7 @@ double Solver::SzCorr(int i, int j)
         nSzim += eigenvecs.col(n)[alpha]*Szi[alpha]*eigenvecs.col(m)[alpha];
         mSzjn += eigenvecs.col(m)[alpha]*Szj[alpha]*eigenvecs.col(n)[alpha];
       }
-      SzSz += nSzim*mSzjn;
+      SzSz += nSzim*mSzjn*exponential(-(eigenvals[n]-eigenvals[m])*t)*exp(-beta*(eigenvals[n]-minval));
       nSzim = 0; mSzjn = 0;
     }
   }
@@ -528,7 +546,7 @@ Matrix<double, Dynamic, Dynamic> Solver::makeSminus(indexstate converttablep)
   return Sminusmat;
 }
 
-double Solver::SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp, Matrix<double,Dynamic,Dynamic> eigvecsp, indexstate converttablep, double beta, double t)
+complex<double> Solver::SpmCorr(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp, Matrix<double,Dynamic,Dynamic> eigvecsp, indexstate converttablep, double beta, double t)
 {
   //Compute the correlations in the xy plane: SxiSxj + SyiSyj.
 
@@ -542,13 +560,13 @@ double Solver::SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat
   complex<double> W, totsum;
   double sumi, sumj;
 
-
+  double minval = eigenvals[0];
 
   for(int n = 0; n < maxIndexValue; n++)
   {
     for(int m = 0; m < converttablep.MaxIndex; m++)
     {
-      W = 0.5*(exp(-beta*eigenvals[n])*exponential(-(eigenvals[n]-eigvalsp[m])*t)+exp(-beta*eigenvals[m])*exponential(-(eigenvals[m]-eigvalsp[n])*t)); //Exponential legger til en i i eksponenten.
+      W = 0.5*(exp(-beta*(eigenvals[n]-minval))*exponential(-(eigenvals[n]-eigvalsp[m])*t)+exp(-beta*(eigenvals[m]-minval))*exponential(-(eigenvals[m]-eigvalsp[n])*t)); //Exponential legger til en i i eksponenten.
       sumi = 0;
       sumj = 0;
       for(int alpha = 0; alpha < maxIndexValue; alpha++)
@@ -560,7 +578,7 @@ double Solver::SxyiSxyj(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat
     }
   }
 
-  return 0;
+  return totsum;
 }
 
 double Solver::Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
