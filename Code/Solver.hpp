@@ -55,6 +55,7 @@ public:
 
   void WriteEigvals();
   void WriteSzStot();
+  void WriteCorr(double beta, double t, vector<complex<double>> z, vector<complex<double>> pm);
   void resetdatafiles();
 
 };
@@ -126,6 +127,7 @@ void Solver::solve()
     converttablep = converttable;
 
     for(int j = 0; j < TWOL; j++) corrfuncz[0][j] = SzCorr(0, j, beta, t); //Only contribution from Sz?
+    for(int j = 0; j < TWOL; j++) corrfuncpm[0][j] = complex<double>(0);
   }
 
   Matrix<double, Dynamic, Dynamic> Sminus;
@@ -147,9 +149,6 @@ void Solver::solve()
 
     if(CORR)
     {
-      eigvalsp = eigenvals;
-      eigvecsp = eigenvecs;
-      converttablep = converttable;
       Sminus = makeSminus(converttablep);
 
       for(int j = 0; j < TWOL; j++)
@@ -157,6 +156,10 @@ void Solver::solve()
         corrfuncz[mynu][j] = SzCorr(0, j, beta, t);
         corrfuncpm[mynu][j] = SpmCorr(0, j, Sminus, eigvalsp, eigvecsp, converttablep, beta, t);
       }
+
+      eigvalsp = eigenvals;
+      eigvecsp = eigenvecs;
+      converttablep = converttable;
     }
   }
 
@@ -174,6 +177,8 @@ void Solver::solve()
       corrpm[j] += corrfuncpm[i][j]*exp(-beta*(mineigvals[i]-GS));
     }
   }
+
+  if(CORR) WriteCorr(beta, t, corrz, corrpm);
 }
 
 
@@ -527,7 +532,7 @@ Matrix<double, Dynamic, Dynamic> Solver::makeSminus(indexstate converttablep)
   Matrix<double, Dynamic, Dynamic> Sminusmat(maxIndexValue, TWOL); //Matrix with one row for each basis state in the current mag sector and one column for each site i.
 
   vector<short int> statevec;
-  double statenum;
+  unsigned int statenum;
 
   for(int i = 0; i < TWOL; i++)
   {
@@ -540,6 +545,7 @@ Matrix<double, Dynamic, Dynamic> Solver::makeSminus(indexstate converttablep)
         statenum = statevec_to_statenum(statevec);
         Sminusmat(alpha, i) = converttablep.state_to_index[statenum];
       }
+      else Sminusmat(alpha, i) = -1;
     }
   }
 
@@ -553,7 +559,6 @@ complex<double> Solver::SpmCorr(int i, int j, Matrix<double, Dynamic, Dynamic> S
   //Only for one magnetisation sector. All mag sectors need to be added and divided by the partition function.
   //Will scale each term by the minimal energy in the corresponding sector.
 
-
   Eigen::Matrix<double, -1, 1, 0, -1, 1> Sminusi = Sminusmat.col(i);
   Eigen::Matrix<double, -1, 1, 0, -1, 1> Sminusj = Sminusmat.col(j);
 
@@ -566,13 +571,16 @@ complex<double> Solver::SpmCorr(int i, int j, Matrix<double, Dynamic, Dynamic> S
   {
     for(int m = 0; m < converttablep.MaxIndex; m++)
     {
-      W = 0.5*(exp(-beta*(eigenvals[n]-minval))*exponential(-(eigenvals[n]-eigvalsp[m])*t)+exp(-beta*(eigenvals[m]-minval))*exponential(-(eigenvals[m]-eigvalsp[n])*t)); //Exponential legger til en i i eksponenten.
+      W = 0.5*(exp(-beta*(eigenvals[n]-minval))*exponential(-(eigenvals[n]-eigvalsp[m])*t)+exp(-beta*(eigvalsp[m]-minval))*exponential(-(eigvalsp[m]-eigenvals[n])*t)); //Exponential legger til en i i eksponenten.
       sumi = 0;
       sumj = 0;
+      cout << "Hei" << endl;
+      cout << eigvecsp.col(m).transpose()[0] << endl;
+      cout << "Hei igjen" << endl;
       for(int alpha = 0; alpha < maxIndexValue; alpha++)
       {
-        sumj += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusj[alpha]];
-        sumi += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusi[alpha]];
+        if(Sminusj[alpha] > 0) sumj += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusj[alpha]];
+        if(Sminusi[alpha] > 0) sumi += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusi[alpha]];
       }
       totsum += W*sumi*sumj;
     }
@@ -703,6 +711,19 @@ void Solver::WriteSzStot()
   Outfile << "\n";
 }
 
+void Solver::WriteCorr(double beta, double t, vector<complex<double>> z, vector<complex<double>> pm)
+{
+  ofstream Outfile(dir + "Corr.txt", std::ios_base::app);
+  if (!Outfile.is_open())
+     cout<<"Could not open file" << endl;
+
+  Outfile.precision(17);
+  Outfile << beta << "   " << t << "   ";
+  for(int i = 0; i < TWOL; i++) Outfile << z[i] << "   ";
+  for(int i = 0; i < TWOL; i++) Outfile << pm[i] << "   ";
+  Outfile << "\n";
+}
+
 
 void Solver::resetdatafiles()
 {
@@ -712,6 +733,11 @@ void Solver::resetdatafiles()
 
   ofstream SFile(dir + "SzStot.txt");
   if (!SFile.is_open())
+    cout<<"Could not open file" << endl;
+
+
+  ofstream CorrFile(dir + "Corr.txt");
+  if (!CorrFile.is_open())
     cout<<"Could not open file" << endl;
 }
 

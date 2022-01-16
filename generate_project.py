@@ -2,12 +2,12 @@ import os
 import numpy as np
 
 mainproject = "NoHoles"  #Set to zero if only one project.
-project = "FMNew"
-description = "Testing FM."
+project = "TwoSpins"
+description = "Testing."
 jobname = "myjob"
 time = "0:10:00"
-runmin = 3
-runmax = 3
+runmin = 0
+runmax = 0
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -16,7 +16,7 @@ NICE = 11
 #BOOST = 0       #Higher precision in Eigen-calculations. Time-consuming. Not implemented for now.
 
 #LATTICE#
-L        = 6*np.ones(nruns, int)
+L        = 1*np.ones(nruns, int)
 nruns = len(L)
 runmax = runmin + (nruns-1)
 
