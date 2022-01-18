@@ -51,11 +51,12 @@ public:
   double Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
   double Sy2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
   double Sz2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
-  double S2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
+  double S(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
 
   void WriteEigvals();
   void WriteSzStot();
-  void WriteCorr(double beta, double t, vector<complex<double>> z, vector<complex<double>> pm);
+  void WritePartition(vector<double> beta, vector<double> partition);
+  void WriteCorr(vector<double> beta, vector<double> time, vector<vector<vector<complex<double>>>> z, vector<vector<vector<complex<double>>>> pm);
   void resetdatafiles();
 
 };
@@ -93,23 +94,22 @@ Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0
 
 void Solver::solve()
 {
+  complex<double> zero; zero.real(0); zero.imag(0);
   vector<double> mineigvals(Ns+1);
-  vector<double> partfunc(Ns+1);       //Partition function for each magnetisation sector, scaled by e^(-beta mineigvals)
-  vector<vector<complex<double>>> corrfuncz(Ns+1);       //Correlation functions for each magnetisation sector.
-  vector<vector<complex<double>>> corrfuncpm(Ns+1);       //Correlation functions for each magnetisation sector.
-
-  for(int i = 0; i < Ns+1; i++)
-  {
-    corrfuncz[i] = vector<complex<double>>(TWOL-1);
-    corrfuncpm[i] = vector<complex<double>>(TWOL-1);
-  }
 
   Eigen::Matrix<double, -1, 1, 0, -1, 1> eigvalsp;
   Matrix<double,Dynamic,Dynamic> eigvecsp;
   indexstate converttablep;
 
-  double beta = 100000;
-  double t = 0;
+  vector<double> beta = {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3, 4, 5};
+  vector<double> time = {0, 0.1, 1, 2, 10};
+
+  int Nb = beta.size();
+  int Nt = time.size();
+
+  vector<vector<double>> partfunc(Ns+1, vector<double>(Nb, 0.0));       //Partition function for each magnetisation sector, scaled by e^(-beta mineigvals)
+  vector<vector<vector<vector<complex<double>>>>> corrfuncz(Ns+1, vector<vector<vector<complex<double>>>>(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero))));       //Correlation functions for each magnetisation sector.
+  vector<vector<vector<vector<complex<double>>>>> corrfuncpm(Ns+1, vector<vector<vector<complex<double>>>>(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero))));       //Correlation functions for each magnetisation sector.
 
   //Do nu=0 first:
   nu = 0;
@@ -117,7 +117,7 @@ void Solver::solve()
   fillH();
   diagonalise();
   mineigvals[0] = eigenvals[0];
-  partfunc[0] = partitionfunction(eigenvals, beta);
+  for(int b = 0; b < Nb; b++) partfunc[0][b] = partitionfunction(eigenvals, beta[b]);
   WriteEigvals();
   WriteSzStot();
   if(CORR)
@@ -126,8 +126,8 @@ void Solver::solve()
     eigvecsp = eigenvecs;
     converttablep = converttable;
 
-    for(int j = 0; j < TWOL; j++) corrfuncz[0][j] = SzCorr(0, j, beta, t); //Only contribution from Sz?
-    for(int j = 0; j < TWOL; j++) corrfuncpm[0][j] = complex<double>(0);
+    for(int j = 0; j < TWOL; j++) for(int b = 0; b < Nb; b++) for(int t = 0; t < Nt; t++) corrfuncz[0][j][b][t] = SzCorr(0, j, beta[b], time[t]); //Only contribution from Sz?
+    for(int j = 0; j < TWOL; j++) for(int b = 0; b < Nb; b++) for(int t = 0; t < Nt; t++) corrfuncpm[0][j][b][t] = zero;
   }
 
   Matrix<double, Dynamic, Dynamic> Sminus;
@@ -140,7 +140,7 @@ void Solver::solve()
     diagonalise();
     mineigvals[mynu] = eigenvals[0];
 
-    partfunc[mynu] = partitionfunction(eigenvals, beta);
+    for(int b = 0; b < Nb; b++) partfunc[mynu][b] = partitionfunction(eigenvals, beta[b]);
 
     WriteEigvals();
     WriteSzStot();
@@ -152,10 +152,12 @@ void Solver::solve()
       Sminus = makeSminus(converttablep);
 
       for(int j = 0; j < TWOL; j++)
-      {
-        corrfuncz[mynu][j] = SzCorr(0, j, beta, t);
-        corrfuncpm[mynu][j] = SpmCorr(0, j, Sminus, eigvalsp, eigvecsp, converttablep, beta, t);
-      }
+        for(int b = 0; b < Nb; b++)
+          for(int t = 0; t < Nt; t++)
+          {
+            corrfuncz[mynu][j][b][t] = SzCorr(0, j, beta[b], time[t]);
+            corrfuncpm[mynu][j][b][t] = SpmCorr(0, j, Sminus, eigvalsp, eigvecsp, converttablep, beta[b], time[t]);
+          }
 
       eigvalsp = eigenvals;
       eigvecsp = eigenvecs;
@@ -164,21 +166,44 @@ void Solver::solve()
   }
 
   double GS = findminimum(mineigvals);
-  double partitionfunction = 0;
-  vector<complex<double>> corrz(TWOL-1, {0.0, 0.0});
-  vector<complex<double>> corrpm(TWOL-1, {0.0, 0.0});
-  for(int i = 0; i < Ns+1; i++)
-  {
-    //cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
-    partitionfunction += partfunc[i]*exp(-beta*(mineigvals[i]-GS));//Sould double check this for a small system?
-    for(int j = 0; j < TWOL; j++)
-    {
-      corrz[j] += corrfuncz[i][j]*exp(-beta*(mineigvals[i]-GS));
-      corrpm[j] += corrfuncpm[i][j]*exp(-beta*(mineigvals[i]-GS));
-    }
-  }
+  cout << GS << endl;
+  vector<double> partitionfunction(Nb, 0.0);
+  vector<vector<vector<complex<double>>>> corrz(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero)));
+  vector<vector<vector<complex<double>>>> corrpm(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero)));
 
-  if(CORR) WriteCorr(beta, t, corrz, corrpm);
+  cout << endl;
+  cout << endl;
+
+  for(int i = 0; i < Ns+1; i++)
+    for(int b = 0; b < Nb; b++)
+    {
+      //cout << partfunc[i]*exp(-beta*(mineigvals[i]-GS)) << endl;
+      partitionfunction[b] += partfunc[i][b]*exp(-beta[b]*(mineigvals[i]-GS));//Sould double check this for a small system?
+      for(int t = 0; t < Nt; t++)
+        for(int j = 0; j < TWOL; j++)
+        {
+          //cout << "Here: " << corrfuncpm[i][j] << "   " << exp(-beta*(mineigvals[i]-GS)) << endl;
+          corrz[j][b][t] += corrfuncz[i][j][b][t]*exp(-beta[b]*(mineigvals[i]-GS));
+          corrpm[j][b][t] += corrfuncpm[i][j][b][t]*exp(-beta[b]*(mineigvals[i]-GS));
+        }
+    }
+
+  for(int j = 0; j < TWOL; j++)
+    for(int b = 0; b < Nb; b++)
+      for(int t = 0; t < Nt; t++)
+      {
+        //cout << "Here: " << corrfuncpm[i][j] << "   " << exp(-beta*(mineigvals[i]-GS)) << endl;
+        corrz[j][b][t] /= partitionfunction[b];
+        corrpm[j][b][t] /= partitionfunction[b];
+      }
+
+  cout << "Feridg" << endl;
+
+  if(CORR) WriteCorr(beta, time, corrz, corrpm);
+
+  WritePartition(beta, partitionfunction);
+
+  cout << "Ferdig" << endl;
 }
 
 
@@ -499,7 +524,9 @@ vector<double> Solver::Szmat(int siteind)
 
 complex<double> Solver::SzCorr(int i, int j, double beta, double t)
 {
-  complex<double> SzSz = 0;
+  complex<double> SzSz;
+
+  SzSz.real(0); SzSz.imag(0);
 
   double nSzim = 0;
   double mSzjn = 0;
@@ -520,6 +547,7 @@ complex<double> Solver::SzCorr(int i, int j, double beta, double t)
         nSzim += eigenvecs.col(n)[alpha]*Szi[alpha]*eigenvecs.col(m)[alpha];
         mSzjn += eigenvecs.col(m)[alpha]*Szj[alpha]*eigenvecs.col(n)[alpha];
       }
+      cout << eigenvals[n]-minval << endl;
       SzSz += nSzim*mSzjn*exponential(-(eigenvals[n]-eigenvals[m])*t)*exp(-beta*(eigenvals[n]-minval));
       nSzim = 0; mSzjn = 0;
     }
@@ -563,6 +591,7 @@ complex<double> Solver::SpmCorr(int i, int j, Matrix<double, Dynamic, Dynamic> S
   Eigen::Matrix<double, -1, 1, 0, -1, 1> Sminusj = Sminusmat.col(j);
 
   complex<double> W, totsum;
+
   double sumi, sumj;
 
   double minval = eigenvals[0];
@@ -571,16 +600,16 @@ complex<double> Solver::SpmCorr(int i, int j, Matrix<double, Dynamic, Dynamic> S
   {
     for(int m = 0; m < converttablep.MaxIndex; m++)
     {
+      //cout << n << "   " << m << endl;
       W = 0.5*(exp(-beta*(eigenvals[n]-minval))*exponential(-(eigenvals[n]-eigvalsp[m])*t)+exp(-beta*(eigvalsp[m]-minval))*exponential(-(eigvalsp[m]-eigenvals[n])*t)); //Exponential legger til en i i eksponenten.
+
       sumi = 0;
       sumj = 0;
-      cout << "Hei" << endl;
-      cout << eigvecsp.col(m).transpose()[0] << endl;
-      cout << "Hei igjen" << endl;
+
       for(int alpha = 0; alpha < maxIndexValue; alpha++)
       {
-        if(Sminusj[alpha] > 0) sumj += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusj[alpha]];
-        if(Sminusi[alpha] > 0) sumi += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusi[alpha]];
+        if(Sminusj[alpha] >= 0) sumj += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusj[alpha]];
+        if(Sminusi[alpha] >= 0) sumi += eigenvecs.col(n)[alpha]*eigvecsp.col(m)[Sminusi[alpha]];
       }
       totsum += W*sumi*sumj;
     }
@@ -678,10 +707,9 @@ double Solver::Sz2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
   return 0.25*(2*nu - Ns)*(2*nu - Ns);
 }
 
-double Solver::S2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
+double Solver::S(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
 {
   double ans = Sx2(statecoeffs) + Sy2(statecoeffs) + Sz2(statecoeffs);
-  cout << ans << endl;
   return 0.5*(-1+sqrt(1+4*ans));
 }
 
@@ -706,22 +734,42 @@ void Solver::WriteSzStot()
   Outfile.precision(17);
   for(int i = 0; i < maxIndexValue; i++)
   {
-    Outfile << 0.5*(2*nu - Ns) << "   " << S2(eigenvecs.col(i)) << endl;
+    Outfile << 0.5*(2*nu - Ns) << "   " << S(eigenvecs.col(i)) << endl;
   }
   Outfile << "\n";
 }
 
-void Solver::WriteCorr(double beta, double t, vector<complex<double>> z, vector<complex<double>> pm)
+void Solver::WriteCorr(vector<double> beta, vector<double> time, vector<vector<vector<complex<double>>>> z, vector<vector<vector<complex<double>>>> pm)
 {
+  cout << "Starter her" << endl;
+
   ofstream Outfile(dir + "Corr.txt", std::ios_base::app);
   if (!Outfile.is_open())
      cout<<"Could not open file" << endl;
 
+  cout << "Inni her" << endl;
+
   Outfile.precision(17);
-  Outfile << beta << "   " << t << "   ";
-  for(int i = 0; i < TWOL; i++) Outfile << z[i] << "   ";
-  for(int i = 0; i < TWOL; i++) Outfile << pm[i] << "   ";
-  Outfile << "\n";
+  for(int b = 0; b < beta.size(); b++)
+    for(int t = 0; t < time.size(); t++)
+    {
+      Outfile << beta[b] << "   " << time[t] << "   ";
+      for(int i = 0; i < z.size(); i++) Outfile << z[i][b][t] << "   ";
+      for(int i = 0; i < pm.size(); i++) Outfile << pm[i][b][t] << "   ";
+      Outfile << endl;
+    }
+}
+
+void Solver::WritePartition(vector<double> beta, vector<double> partition)
+{
+  ofstream Outfile(dir + "Partition.txt", std::ios_base::app);
+  if (!Outfile.is_open())
+     cout<<"Could not open file" << endl;
+
+  for(int b = 0; b < beta.size(); b++)
+  {
+    Outfile << beta[b] << "   " << partition[b] << endl;
+  }
 }
 
 
@@ -735,6 +783,9 @@ void Solver::resetdatafiles()
   if (!SFile.is_open())
     cout<<"Could not open file" << endl;
 
+  ofstream PartitionFile(dir + "Partition.txt");
+  if (!PartitionFile.is_open())
+    cout<<"Could not open file" << endl;
 
   ofstream CorrFile(dir + "Corr.txt");
   if (!CorrFile.is_open())

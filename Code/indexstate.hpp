@@ -31,11 +31,13 @@ indexstate::indexstate(int MaxIndex0, int MaxState0)
 
 void indexstate::init_index_to_state(int MaxIndex0)
 {
+  MaxIndex = MaxIndex0;
   index_to_state = vector<unsigned int>(MaxIndex0);
 }
 
 void indexstate::init_state_to_index(int MaxState0)
 {
+  MaxState = MaxState0;
   state_to_index = vector<short unsigned int>(MaxState0);
 }
 
