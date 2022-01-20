@@ -16,4 +16,4 @@ module load intel/2019b
 #rsync -av $SUBMITDIR/ $SCRATCH/ --exclude=rundir
 #cd $SCRATCH
 echo Running program.....
-$HOME/Documents/NematicBondTheory/Code/program NoHoles/FMNew $SLURM_ARRAY_TASK_ID
+$HOME/Documents/NematicBondTheory/Code/program NoHoles/FM $SLURM_ARRAY_TASK_ID

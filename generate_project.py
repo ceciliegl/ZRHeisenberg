@@ -2,12 +2,12 @@ import os
 import numpy as np
 
 mainproject = "NoHoles"  #Set to zero if only one project.
-project = "TwoSpins"
+project = "FM2"
 description = "Testing."
 jobname = "myjob"
 time = "0:10:00"
 runmin = 0
-runmax = 0
+runmax = 10
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -16,7 +16,7 @@ NICE = 11
 #BOOST = 0       #Higher precision in Eigen-calculations. Time-consuming. Not implemented for now.
 
 #LATTICE#
-L        = 1*np.ones(nruns, int)
+L        = 6*np.ones(nruns, int)
 nruns = len(L)
 runmax = runmin + (nruns-1)
 
@@ -26,9 +26,9 @@ Nh = 0*np.ones(nruns, int);
 tl     = 1*np.ones(nruns)
 tr     = 1*np.ones(nruns)
 Jzl    = -1*np.ones(nruns)
-Jzr    = -1*np.ones(nruns)
-Jpml   = -1*np.ones(nruns)
-Jpmr   = -1*np.ones(nruns)
+Jzr    = Jzl
+Jpml   = -1*np.logspace(0, np.log10(2), nruns)+np.ones(nruns)
+Jpmr   = Jpml
 
 EIGVECS = 1         #Compute eigenvectors?
 CORR = 1            #Compute correlations?
