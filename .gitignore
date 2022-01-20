@@ -4,6 +4,7 @@
 
 *.sh
 Data/*
+Jobs/*
 
 # Compiled source #
 ###################
