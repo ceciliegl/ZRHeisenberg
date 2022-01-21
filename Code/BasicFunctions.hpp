@@ -1,6 +1,10 @@
 #ifndef BASICFUNCTIONS
 #define BASICFUNCTIONS
 
+#include <limits>
+
+using namespace std;
+
 complex<double> exponential(double phi)
 {
   //returns exp(i\phi)
