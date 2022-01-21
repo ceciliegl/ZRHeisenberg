@@ -1,6 +1,6 @@
 
 LIBS   = -lm -lstdc++
-INCDIR = -I/Users/cecilieglittum/Documents/include/eigen-eigen-323c052e1731
+INCDIR = -I$(LD_LIBRARY_PATH) -I$(EBROOTEIGEN)/include
 
 # C++ compiler
 CCC= $(CXX)
