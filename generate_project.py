@@ -72,7 +72,7 @@ runsub.write("#cd $SUBMITDIR\n")
 runsub.write("#rsync -av $SUBMITDIR/ $SCRATCH/ --exclude=rundir\n")
 runsub.write("#cd $SCRATCH\n")
 runsub.write("echo Running program.....\n")
-runsub.write("$HOME/Documents/NematicBondTheory/Code/program " + totalproject + " $SLURM_ARRAY_TASK_ID\n")
+runsub.write("$HOME/Documents/ZRHeisenberg/Code/program " + totalproject + " $SLURM_ARRAY_TASK_ID\n")
 
 
 
