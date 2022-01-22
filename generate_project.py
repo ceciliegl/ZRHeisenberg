@@ -16,11 +16,11 @@ NICE = 11
 #BOOST = 0       #Higher precision in Eigen-calculations. Time-consuming. Not implemented for now.
 
 #LATTICE#
-L        = 1*np.ones(nruns, int)
+L        = 2*np.ones(nruns, int)
 nruns = len(L)
 runmax = runmin + (nruns-1)
 
-Nh = 1*np.ones(nruns, int);
+Nh = 2*np.ones(nruns, int);
 
 #EXCHANGE#
 tl     = 1*np.ones(nruns)

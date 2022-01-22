@@ -1,6 +1,5 @@
-
 LIBS   = -lm -lstdc++
-INCDIR = -I$(LD_LIBRARY_PATH) -I$(EBROOTEIGEN)/include
+INCDIR = -I/Users/cecilieglittum/Documents/include/eigen-eigen-323c052e1731
 
 # C++ compiler
 CCC= $(CXX)
@@ -9,15 +8,14 @@ LINKOPTS =  -Wall -O3
 CCFLAGS = $(CCOPTS) $(INCDIR)
 
 
-
 RUNSOURCES =  run.cpp Makefile Solver.hpp indexstate.hpp BasicFunctions.hpp Quantities.hpp PrintFunctions.hpp ReadInputFiles.hpp
 
 
 program: run.o
-	$(CCC) $(LINKOPTS) -o $@ $^  $(LIBS)
+				 $(CCC) $(LINKOPTS) -o $@ $^  $(LIBS)
 
 run.o:   $(RUNSOURCES)
-	$(CCC) $(CCFLAGS) -c -o $@ $<
+				 $(CCC) $(CCFLAGS) -c -o $@ $<
 
 
 
