@@ -1,4 +1,3 @@
-
 LIBS   = -lm -lstdc++
 LIBDIR = -L$(LD_LIBRARY_PATH)
 #INCDIR = -I$(LD_LIBRARY_PATH) -I$(EBROOTEIGEN)/include
@@ -11,7 +10,6 @@ LINKOPTS =  -static -Wall -O3
 CCFLAGS = $(CCOPTS) $(INCDIR)
 
 
-
 RUNSOURCES =  run.cpp Makefile Solver.hpp indexstate.hpp BasicFunctions.hpp Quantities.hpp PrintFunctions.hpp ReadInputFiles.hpp
 
 
@@ -19,7 +17,7 @@ program: run.o
 	$(CCC) $(LINKOPTS) -o $@ $^ $(LIBDIR) $(LIBS)
 
 run.o:   $(RUNSOURCES)
-	$(CCC) $(CCFLAGS) -c -o $@ $<
+				 $(CCC) $(CCFLAGS) -c -o $@ $<
 
 
 

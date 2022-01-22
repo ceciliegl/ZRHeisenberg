@@ -132,9 +132,12 @@ void Solver::solve()
   WriteSzStot();
   if(CORR)
   {
+    cout << "IN CORR FOR nu=0" << endl;
     eigenvalsp = eigenvals;
     eigenvecsp = eigenvecs;
     converttablep = converttable;
+
+    cout << "BEFORE SZCORR FOR nu=0" << endl;
 
     for(int j = 0; j < TWOL; j++) corrfunczz[0] = SzCorr(beta, time); //Only contribution from Sz?
     for(int j = 0; j < TWOL; j++) for(int b = 0; b < Nb; b++) for(int t = 0; t < Nt; t++) corrfuncpm[0][j][b][t] = zero;
@@ -177,6 +180,8 @@ void Solver::solve()
 
             cout << "Spm time for nu = " << mynu << ": " << (stop-start)/CLOCKS_PER_SEC << endl;
           }*/
+
+      cout << "BEFORE SZCORR FOR nu=" << nu << endl;
 
       start = clock(); //start clock
       corrfunczz[mynu] = SzCorr(beta, time);
@@ -281,12 +286,13 @@ void Solver::makebasis() //nu is number of up spins
   vector<int> holeind(Nh+1);
   vector<int> holemax(Nh+1);
 
-  for (int i = 0; i < Nh+1; i++)
+  for (int i = 0; i < Nh; i++)
   {
     holeind[i] = Nh-1-i;
     holemax[i] = TWOL-i;
   }
   holeind[Nh] = 0;
+  holemax[Nh] = 2;
 
   int p = 0;
 
@@ -315,9 +321,13 @@ void Solver::makebasis() //nu is number of up spins
     holeind[0]++;
     while (holeind[p] == holemax[p])
     {
-      holeind[++p]++;
+      ++p;
+      //cout << "p = " << p << endl;
+      holeind[p]++;
       for (int q = p-1; q>=0; q--) holeind[q]=holeind[q+1]+1; //Feilen ligger her
 
+
+      if(holeind[Nh] == 1){break;}
       if(holeind[p]!=holemax[p]){p=0;}
     }
   }
@@ -500,8 +510,8 @@ void Solver::fillH()
         //Hop along legs.
         neighpos = (holepos+neigh2+TWOL)%TWOL;
 
-        if ((neigh2 == -2 && holepos == 0) || (neigh2 == +2 && holepos == TWOL-2)){additionalsign = (+1) + 2*(-1)*((TWOL-3-(Nh-1+(abs(instate[TWOL-1])-1)))%2);}
-        else if ((neigh2 == -2 && holepos == 1) || (neigh2 == +2 && holepos == TWOL-1)) {additionalsign = (+1) + 2*(-1)*((TWOL-3-(Nh-1+(abs(instate[0])-1)))%2);}
+        if ((neigh2 == -2 && holepos == 0) || (neigh2 == +2 && holepos == TWOL-2)){additionalsign = (+1) + 2*(-1)*((TWOL-3-(Nh-1+(int(abs(instate[TWOL-1]))-1)))%2);}
+        else if ((neigh2 == -2 && holepos == 1) || (neigh2 == +2 && holepos == TWOL-1)) {additionalsign = (+1) + 2*(-1)*((TWOL-3-(Nh-1+(int(abs(instate[0]))-1)))%2);}
         else if (instate[(holepos+neigh+TWOL)%TWOL] == 0) {additionalsign = +1;}
         else {additionalsign = -1;}
 
@@ -707,7 +717,7 @@ double Solver::Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
 
   //I guess I already have the statenumbers if i calculate Sx2 when I am computing the eigenvalues?
   double ans = 0;
-  double maxstatenum = (Nh == 0) ? twomax : twomax*(1 + TWOL*TWOLpow[-1]*Nh); //This is an overestimation for Nh>0!
+  double maxstatenum = (Nh == 0) ? twomax : twomax*(1 + TWOL*TWOLpow[Nh-1]*Nh); //This is an overestimation for Nh>0!
   vector<double> intermediatestates(maxstatenum, 0.0);
 
   vector<short int> statevec;
@@ -721,7 +731,7 @@ double Solver::Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
     for(int j = 0; j < TWOL; j++)
     {
       outvec = statevec;
-      if(abs(statevec[j]) == +1)
+      if(statevec[j] == +1 || statevec[j] == -1)
       {
         outvec[j] *= (-1);
         outnum = statevec_to_statenum(outvec);
@@ -745,7 +755,7 @@ double Solver::Sy2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
   //I guess I already have the statenumbers if i calculate Sy2 when I am computing the eigenvalues?
 
   double ans = 0;
-  double maxstatenum = (Nh == 0) ? twomax : twomax*(1 + TWOL*TWOLpow[-1]*Nh); //This is an overestimation for Nh>0!
+  double maxstatenum = (Nh == 0) ? twomax : twomax*(1 + TWOL*TWOLpow[Nh-1]*Nh); //This is an overestimation for Nh>0!
   vector<double> intermediatestates(maxstatenum, 0.0);
 
   vector<short int> statevec;
@@ -759,7 +769,7 @@ double Solver::Sy2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
     for(int j = 0; j < TWOL; j++) //For each site
     {
       outvec = statevec;
-      if(abs(statevec[j]) == +1)
+      if(statevec[j] == +1 || statevec[j] == -1)
       {
         outvec[j] *= (-1);
         outnum = statevec_to_statenum(outvec);
