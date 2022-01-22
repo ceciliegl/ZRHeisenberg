@@ -1,13 +1,13 @@
 import os
 import numpy as np
 
-mainproject = "OneHole"  #Set to zero if only one project.
-project = "TwoSites"
+mainproject = "NoHoles"  #Set to zero if only one project.
+project = "Testtt"
 description = "Testing."
 jobname = "myjob"
 time = "0:10:00"
 runmin = 0
-runmax = 0
+runmax = 10
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -16,18 +16,18 @@ NICE = 11
 #BOOST = 0       #Higher precision in Eigen-calculations. Time-consuming. Not implemented for now.
 
 #LATTICE#
-L        = 2*np.ones(nruns, int)
+L        = 6*np.ones(nruns, int)
 nruns = len(L)
 runmax = runmin + (nruns-1)
 
-Nh = 2*np.ones(nruns, int);
+Nh = 0*np.ones(nruns, int);
 
 #EXCHANGE#
 tl     = 1*np.ones(nruns)
 tr     = 1*np.ones(nruns)
 Jzl    = -1*np.ones(nruns)
 Jzr    = Jzl
-Jpml   = -1*np.ones(nruns) #-1*np.logspace(0, np.log10(2), nruns)+np.ones(nruns)
+Jpml   = -1*np.logspace(0, np.log10(2), nruns)+np.ones(nruns)
 Jpmr   = Jpml
 
 EIGVECS = 1         #Compute eigenvectors?
