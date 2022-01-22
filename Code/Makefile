@@ -1,11 +1,13 @@
 
 LIBS   = -lm -lstdc++
-INCDIR = -I$(LD_LIBRARY_PATH) -I$(EBROOTEIGEN)/include
+LIBDIR = -L$(LD_LIBRARY_PATH)
+#INCDIR = -I$(LD_LIBRARY_PATH) -I$(EBROOTEIGEN)/include
+INCDIR = -I$(EBROOTEIGEN)/include
 
 # C++ compiler
 CCC= $(CXX)
-CCOPTS= $(CFLAGS) -O3 -std=c++11 -Wno-deprecated-register
-LINKOPTS =  -Wall -O3
+CCOPTS= $(CFLAGS) -g -O3 -std=c++11 -Wno-deprecated-register
+LINKOPTS =  -static -Wall -O3
 CCFLAGS = $(CCOPTS) $(INCDIR)
 
 
@@ -14,7 +16,7 @@ RUNSOURCES =  run.cpp Makefile Solver.hpp indexstate.hpp BasicFunctions.hpp Quan
 
 
 program: run.o
-	$(CCC) $(LINKOPTS) -o $@ $^  $(LIBS)
+	$(CCC) $(LINKOPTS) -o $@ $^ $(LIBDIR) $(LIBS)
 
 run.o:   $(RUNSOURCES)
 	$(CCC) $(CCFLAGS) -c -o $@ $<
