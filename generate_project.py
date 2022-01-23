@@ -2,12 +2,12 @@ import os
 import numpy as np
 
 mainproject = "NoHoles"  #Set to zero if only one project.
-project = "Testtt"
+project = "FMTEST"
 description = "Testing."
 jobname = "myjob"
 time = "0:10:00"
 runmin = 0
-runmax = 10
+runmax = 0
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
