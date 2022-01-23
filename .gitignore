@@ -61,5 +61,3 @@ Thumbs.db
 ###############
 *.sub
 *.dat
-Code/Makefile*
-Makefile*
