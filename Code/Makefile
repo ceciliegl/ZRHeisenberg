@@ -6,7 +6,7 @@ INCDIR = -I$(EBROOTEIGEN)/include
 # C++ compiler
 CCC= $(CXX)
 CCOPTS= $(CFLAGS) -g -O3 -std=c++11 -Wno-deprecated-register
-LINKOPTS =  -static -Wall -O3
+LINKOPTS = -Wall -O3
 CCFLAGS = $(CCOPTS) $(INCDIR)
 
 

@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 mainproject = "NoHoles"  #Set to zero if only one project.
-project = "FM2"
+project = "FMTEST"
 description = "Testing."
 jobname = "myjob"
 time = "0:10:00"
