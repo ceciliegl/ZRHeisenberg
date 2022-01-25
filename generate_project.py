@@ -1,13 +1,13 @@
 import os
 import numpy as np
 
-mainproject = "NoHoles"  #Set to zero if only one project.
+mainproject = "OneHole"  #Set to zero if only one project.
 project = "FMTEST"
 description = "Testing."
 jobname = "myjob"
-time = "0:10:00"
+time = "24:00:00"
 runmin = 0
-runmax = 0
+runmax = 10
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -20,7 +20,7 @@ L        = 6*np.ones(nruns, int)
 nruns = len(L)
 runmax = runmin + (nruns-1)
 
-Nh = 0*np.ones(nruns, int);
+Nh = 1*np.ones(nruns, int);
 
 #EXCHANGE#
 tl     = 1*np.ones(nruns)
