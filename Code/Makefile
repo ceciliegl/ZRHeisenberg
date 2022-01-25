@@ -6,7 +6,7 @@ INCDIR = -I$(EBROOTEIGEN)/include
 # C++ compiler
 CCC= $(CXX)
 CCOPTS= $(CFLAGS) -O3 -std=c++11 -Wno-deprecated-register
-LINKOPTS = -Wall -O3
+LINKOPTS = -static -Wall -O3
 CCFLAGS = $(CCOPTS) $(INCDIR)
 
 
@@ -17,7 +17,7 @@ program: run.o
 	$(CCC) $(LINKOPTS) -o $@ $^ $(LIBDIR) $(LIBS)
 
 run.o:   $(RUNSOURCES)
-				 $(CCC) $(CCFLAGS) -c -o $@ $<
+	$(CCC) $(CCFLAGS) -c -o $@ $<
 
 
 
