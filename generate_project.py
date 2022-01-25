@@ -16,8 +16,8 @@ NICE = 11
 #BOOST = 0       #Higher precision in Eigen-calculations. Time-consuming. Not implemented for now.
 
 #LATTICE#
-L        = 6*np.ones(nruns, int)
-nruns = len(L)
+L      = 1*np.ones(nruns, int)
+nruns  = len(L)
 runmax = runmin + (nruns-1)
 
 Nh = 1*np.ones(nruns, int);
@@ -25,9 +25,9 @@ Nh = 1*np.ones(nruns, int);
 #EXCHANGE#
 tl     = 1*np.ones(nruns)
 tr     = 1*np.ones(nruns)
-Jzl    = -1*np.ones(nruns)
+Jzl    = 1*np.ones(nruns)
 Jzr    = Jzl
-Jpml   = -1*np.logspace(0, np.log10(2), nruns)+np.ones(nruns)
+Jpml   = 1*np.ones(nruns) #-1*np.logspace(0, np.log10(2), nruns)+np.ones(nruns)
 Jpmr   = Jpml
 
 EIGVECS = 1         #Compute eigenvectors?
