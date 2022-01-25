@@ -17,7 +17,7 @@ program: run.o
 	$(CCC) $(LINKOPTS) -o $@ $^ $(LIBDIR) $(LIBS)
 
 run.o:   $(RUNSOURCES)
-				 $(CCC) $(CCFLAGS) -c -o $@ $<
+	$(CCC) $(CCFLAGS) -c -o $@ $<
 
 
 
