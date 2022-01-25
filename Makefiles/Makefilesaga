@@ -14,21 +14,21 @@ RUNSOURCES =  run.cpp Makefile Solver.hpp indexstate.hpp BasicFunctions.hpp Quan
 
 
 program: run.o
-	$(CCC) $(LINKOPTS) -o $@ $^ $(LIBDIR) $(LIBS)
+        $(CCC) $(LINKOPTS) -o $@ $^ $(LIBDIR) $(LIBS)
 
 run.o:   $(RUNSOURCES)
-				 $(CCC) $(CCFLAGS) -c -o $@ $<
+                                 $(CCC) $(CCFLAGS) -c -o $@ $<
 
 
 
 spotless:
-	make clean
+        make clean
 
 clean   :
-	rm -f *.dvi
-	rm -f *.aux
-	rm -f *~
-	rm -f core
-	rm -f *.o
-	rm -f *.exec
-	rm -f program
+        rm -f *.dvi
+        rm -f *.aux
+        rm -f *~
+        rm -f core
+        rm -f *.o
+        rm -f *.exec
+        rm -f program
