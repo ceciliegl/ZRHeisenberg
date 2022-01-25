@@ -47,10 +47,17 @@ public:
   vector<short int> statenum_to_statevec(unsigned int statenum);
 
   vector<double> Szmat(int siteind);
+
+  Matrix<double, Dynamic, Dynamic> SzmatMATRIX(int siteind);
   //complex<double> SzCorr(int i, int j, double beta, double t);
+
+  vector<vector<vector<complex<double>>>> SzCorrMat(vector<double> beta, vector<double> time);
+
   vector<vector<vector<complex<double>>>> SzCorr(vector<double> beta, vector<double> time);
   Matrix<double, Dynamic, Dynamic> makeSminus(indexstate converttablep);
+  Matrix<double, Dynamic, Dynamic> SminusMATRIX(indexstate converttablep, int siteind);
   //complex<double> SpmCorr(int i, int j, Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvalsp, Matrix<double,Dynamic,Dynamic> eigenvecsp, indexstate converttablep, double beta, double t);
+  vector<vector<vector<complex<double>>>> SpmCorrMat(Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvalsp, Matrix<double,Dynamic,Dynamic> eigenvecsp, indexstate converttablep, vector<double> beta, vector<double> time);
   vector<vector<vector<complex<double>>>> SpmCorr(Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvalsp, Matrix<double,Dynamic,Dynamic> eigenvecsp, indexstate converttablep, vector<double> beta, vector<double> time);
 
   double Sx2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
@@ -103,7 +110,8 @@ Solver::Solver(string dir0, int L0, int Nh0, double tl0, double tr0, double Jzl0
 
 void Solver::solve()
 {
-  vector<double> mineigvals(Ns+1);
+  vector<double> mineigvals(Ns+1);   //Minimum eigenvalue for each sector
+  vector<double> mineigvalspm(Ns+1); //Minimum eigenvalues for a sector and the previous so that Corrpm doesn't blow up at large beta
 
   Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvalsp;
   Matrix<double,Dynamic,Dynamic> eigenvecsp;
@@ -119,7 +127,9 @@ void Solver::solve()
 
   vector<vector<double>> partfunc(Ns+1, vector<double>(Nb, 0.0));       //Partition function for each magnetisation sector, scaled by e^(-beta mineigvals)
   vector<vector<vector<vector<complex<double>>>>> corrfunczz(Ns+1, vector<vector<vector<complex<double>>>>(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero))));       //Correlation functions for each magnetisation sector.
+  vector<vector<vector<vector<complex<double>>>>> corrfunczz2(Ns+1, vector<vector<vector<complex<double>>>>(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero))));       //Correlation functions for each magnetisation sector.
   vector<vector<vector<vector<complex<double>>>>> corrfuncpm(Ns+1, vector<vector<vector<complex<double>>>>(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero))));       //Correlation functions for each magnetisation sector.
+  vector<vector<vector<vector<complex<double>>>>> corrfuncpm2(Ns+1, vector<vector<vector<complex<double>>>>(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero))));       //Correlation functions for each magnetisation sector.
 
   //Do nu=0 first:
   nu = 0;
@@ -127,6 +137,7 @@ void Solver::solve()
   fillH();
   diagonalise();
   mineigvals[0] = eigenvals[0];
+  mineigvalspm[0] = eigenvals[0];
   for(int b = 0; b < Nb; b++) partfunc[0][b] = partitionfunction(eigenvals, beta[b]);
   WriteEigvals();
   WriteSzStot();
@@ -139,7 +150,7 @@ void Solver::solve()
 
     cout << "BEFORE SZCORR FOR nu=0" << endl;
 
-    for(int j = 0; j < TWOL; j++) corrfunczz[0] = SzCorr(beta, time); //Only contribution from Sz?
+    corrfunczz[0] = SzCorr(beta, time); //Only contribution from Sz?
     for(int j = 0; j < TWOL; j++) for(int b = 0; b < Nb; b++) for(int t = 0; t < Nt; t++) corrfuncpm[0][j][b][t] = zero;
   }
 
@@ -152,6 +163,7 @@ void Solver::solve()
     fillH();
     diagonalise();
     mineigvals[mynu] = eigenvals[0];
+    mineigvalspm[mynu] = (eigenvalsp[0] < eigenvals[0]) ? eigenvalsp[0] : eigenvals[0];
 
     for(int b = 0; b < Nb; b++) partfunc[mynu][b] = partitionfunction(eigenvals, beta[b]);
 
@@ -183,17 +195,41 @@ void Solver::solve()
 
       cout << "BEFORE SZCORR FOR nu=" << nu << endl;
 
-      start = clock(); //start clock
+      /*start = clock(); //start clock
       corrfunczz[mynu] = SzCorr(beta, time);
       stop = clock();
 
-      cout << "Sz time for nu = " << mynu << ": " << (stop-start)/CLOCKS_PER_SEC << endl;
+      cout << "Sz time for nu = " << mynu << ": " << (stop-start)/CLOCKS_PER_SEC << endl;*/
 
       start = clock(); //start clock
+      corrfunczz[mynu] = SzCorrMat(beta, time);
+      stop = clock();
+
+      /*for(int j = 0; j < TWOL; j++)
+        for(int b = 0; b < Nb; b++)
+          for(int t = 0; t < Nt; t++)
+            cout << corrfunczz[mynu][j][b][t]-corrfunczz2[mynu][j][b][t] << endl;*/
+
+      cout << "SzMAT time for nu = " << mynu << ": " << (stop-start)/CLOCKS_PER_SEC << endl;
+
+      /*start = clock(); //start clock
       corrfuncpm[mynu] = SpmCorr(Sminus, eigenvalsp, eigenvecsp, converttablep, beta, time);
       stop = clock();
 
-      cout << "Spm time for nu = " << mynu << ": " << (stop-start)/CLOCKS_PER_SEC << endl;
+      cout << "Spm time for nu = " << mynu << ": " << (stop-start)/CLOCKS_PER_SEC << endl;*/
+
+      start = clock(); //start clock
+      corrfuncpm[mynu] = SpmCorrMat(eigenvalsp, eigenvecsp, converttablep, beta, time);
+      stop = clock();
+
+      /*for(int j = 0; j < TWOL; j++)
+        for(int b = 0; b < Nb; b++)
+          for(int t = 0; t < Nt; t++)
+          {
+            cout << "Sz: " << corrfunczz[mynu][j][b][t] << "   Original: " << corrfuncpm[mynu][j][b][t] << "   Mat: " << corrfuncpm2[mynu][j][b][t] << "   Diff: " << corrfuncpm[mynu][j][b][t]-corrfuncpm2[mynu][j][b][t] << endl;
+          }*/
+
+      cout << "SpmMAT time for nu = " << mynu << ": " << (stop-start)/CLOCKS_PER_SEC << endl;
 
       eigenvalsp = eigenvals;
       eigenvecsp = eigenvecs;
@@ -220,7 +256,7 @@ void Solver::solve()
         {
           //cout << "Here: " << corrfuncpm[i][j] << "   " << exp(-beta*(mineigvals[i]-GS)) << endl;
           corrz[j][b][t] += corrfunczz[i][j][b][t]*exp(-beta[b]*(mineigvals[i]-GS));
-          corrpm[j][b][t] += corrfuncpm[i][j][b][t]*exp(-beta[b]*(mineigvals[i]-GS));
+          corrpm[j][b][t] += corrfuncpm[i][j][b][t]*exp(-beta[b]*(mineigvalspm[i]-GS));
         }
     }
 
@@ -563,8 +599,71 @@ vector<double> Solver::Szmat(int siteind)
   return ans;
 }
 
+Matrix<double,Dynamic,Dynamic> Solver::SzmatMATRIX(int siteind)
+{
+  //Sovle it as a sparse matrix maybe? It is diagonal?
+  Matrix<double,Dynamic,Dynamic> ans(maxIndexValue,maxIndexValue);
+  double statenumber;
+  vector<short int> statevec;
+
+  ans.setZero();
+
+  for (int i = 0; i < maxIndexValue; i++)
+  {
+    statenumber = converttable.index_to_state[i];
+    statevec = statenum_to_statevec(statenumber);
+    ans(i,i) = 0.5*statevec[siteind];
+  }
+
+  return ans;
+}
+
+
+vector<vector<vector<complex<double>>>> Solver::SzCorrMat(vector<double> beta, vector<double> time)
+{
+  Matrix<double,Dynamic,Dynamic> S0eigenbasis;
+  vector<Matrix<double,Dynamic,Dynamic>> Sjeigenbasis;
+
+  Matrix<double,Dynamic,Dynamic> eigenvecsinv;
+
+  eigenvecsinv = eigenvecs.inverse();
+
+  for(int j = 0; j < TWOL; j++)
+  {
+    Sjeigenbasis.push_back(eigenvecsinv*SzmatMATRIX(j)*eigenvecs);
+  }
+  S0eigenbasis = Sjeigenbasis[0];
+
+  double minval = eigenvals[0];
+
+  vector<vector<complex<double>>> msum(TWOL, vector<complex<double>>(Nt, zero));
+  vector<vector<vector<complex<double>>>> SzSz(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero)));
+
+  for(int n = 0; n < maxIndexValue; n++)
+  {
+    for(int j = 0; j < TWOL; j++)
+      for(int t = 0; t < Nt; t++)
+      {
+        msum[j][t] = zero;
+        for(int m = 0; m < maxIndexValue; m++)
+        {
+          msum[j][t] += S0eigenbasis(n, m)*Sjeigenbasis[j](m, n)*exponential(-(eigenvals[n]-eigenvals[m])*time[t]);
+        }
+      }
+    for(int j = 0; j < TWOL; j++)
+      for(int t = 0; t < Nt; t++)
+        for(int b = 0; b < Nb; b++)
+        {
+          SzSz[j][b][t] += exp(-beta[b]*(eigenvals[n]-minval))*msum[j][t];
+        }
+  }
+  return SzSz;
+}
+
 vector<vector<vector<complex<double>>>> Solver::SzCorr(vector<double> beta, vector<double> time)
 {
+  //vector<vector<complex<double>>> W(Nb, vector<complex<double>>(Nt, zero));
+  //vector<vector<vector<double>>>partsum(TWOL, vector<vector<double>>(maxIndexValue, vector<double>(maxIndexValue, 0.0)));
   vector<vector<vector<complex<double>>>> SzSz(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero)));
 
   double nSz0m = 0;
@@ -578,7 +677,7 @@ vector<vector<vector<complex<double>>>> Solver::SzCorr(vector<double> beta, vect
   for(int j = 0; j < TWOL; j++) Szj[j] = Szmat(j);
 
   Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvecn, eigenvecm;
-  double eigenvecnmalpha;
+  //double eigenvecnmalpha;
   vector<double> Szjnow(maxIndexValue);
 
   for (int n = 0; n < maxIndexValue; n++)
@@ -587,22 +686,24 @@ vector<vector<vector<complex<double>>>> Solver::SzCorr(vector<double> beta, vect
     for (int m = 0; m < maxIndexValue; m++)
     {
       eigenvecm = eigenvecs.col(m);
+      nSz0m = 0;
+      for (int alpha = 0; alpha < maxIndexValue; alpha ++)
+      {
+        nSz0m += eigenvecn[alpha]*eigenvecm[alpha]*Sz0[alpha];
+      }
       for(int j = 0; j < TWOL; j++)
       {
         Szjnow = Szj[j];
+        mSzjn = 0;
         for (int alpha = 0; alpha < maxIndexValue; alpha ++)
         {
-          //This is probably an extremely stupid way to do this?
-          eigenvecnmalpha = eigenvecn[alpha]*eigenvecm[alpha];
-          nSz0m += eigenvecnmalpha*Sz0[alpha];
-          mSzjn += eigenvecnmalpha*Szjnow[alpha];
+          mSzjn += eigenvecn[alpha]*eigenvecm[alpha]*Szjnow[alpha];
         }
         //cout << eigenvals[n]-minval << endl;
 
         for(int b = 0; b < Nb; b++)
           for(int t = 0; t < Nt; t++)
             SzSz[j][b][t] += nSz0m*mSzjn*exponential(-(eigenvals[n]-eigenvals[m])*time[t])*exp(-beta[b]*(eigenvals[n]-minval));
-        nSz0m = 0; mSzjn = 0;
       }
     }
   }
@@ -634,6 +735,68 @@ Matrix<double, Dynamic, Dynamic> Solver::makeSminus(indexstate converttablep)
   return Sminusmat;
 }
 
+
+Matrix<double, Dynamic, Dynamic> Solver::SminusMATRIX(indexstate converttablep, int siteind)
+{
+  Matrix<double, Dynamic, Dynamic> Sminusmat(converttablep.MaxIndex, maxIndexValue); //Matrix with one row for each basis state in the current mag sector and one column for each site i.
+
+  vector<short int> statevec;
+  unsigned int statenum;
+
+  Sminusmat.setZero();
+
+  for(int alpha = 0; alpha < maxIndexValue; alpha++)
+  {
+    statevec = statenum_to_statevec(converttable.index_to_state[alpha]);
+    if(statevec[siteind] == +1)
+    {
+      statevec[siteind] = -1;
+      statenum = statevec_to_statenum(statevec);
+      Sminusmat(converttablep.state_to_index[statenum], alpha) = +1;
+    }
+  }
+
+  return Sminusmat;
+}
+
+vector<vector<vector<complex<double>>>> Solver::SpmCorrMat(Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvalsp, Matrix<double,Dynamic,Dynamic> eigenvecsp, indexstate converttablep, vector<double> beta, vector<double> time)
+{
+  Matrix<double,Dynamic,Dynamic> Sminus0eigenbasis;
+  vector<Matrix<double,Dynamic,Dynamic>> Sminusjeigenbasis;
+
+  Matrix<double,Dynamic,Dynamic> eigenvecspinv;
+
+  eigenvecspinv = eigenvecsp.inverse();
+
+  for(int j = 0; j < TWOL; j++)
+  {
+    Sminusjeigenbasis.push_back(eigenvecspinv*SminusMATRIX(converttablep, j)*eigenvecs);
+  }
+  Sminus0eigenbasis = Sminusjeigenbasis[0];
+
+  double minval = eigenvals[0];
+  if(eigenvalsp[0] < minval) minval = eigenvalsp[0];
+
+  vector<vector<complex<double>>> W(Nb, vector<complex<double>>(Nt, zero));
+  vector<vector<vector<double>>>partsum(TWOL, vector<vector<double>>(maxIndexValue, vector<double>(converttablep.MaxIndex, 0.0)));
+  vector<vector<vector<complex<double>>>>totsum(TWOL, vector<vector<complex<double>>>(Nb, vector<complex<double>>(Nt, zero)));
+
+  for(int n = 0; n < maxIndexValue; n++)
+    for(int m = 0; m < converttablep.MaxIndex; m++)
+    {
+      for(int j = 0; j < TWOL; j++) partsum[j][n][m] += Sminus0eigenbasis(m,n)*Sminusjeigenbasis[j](m,n);
+
+      for(int t = 0; t < Nt; t++)
+        for(int b = 0; b < Nb; b++)
+        {
+          W[b][t] = 0.5*(exp(-beta[b]*(eigenvals[n]-minval))*exponential(-(eigenvals[n]-eigenvalsp[m])*time[t])+exp(-beta[b]*(eigenvalsp[m]-minval))*exponential(-(eigenvalsp[m]-eigenvals[n])*time[t])); //Exponential legger til en i i eksponenten.
+          for(int j = 0; j < TWOL; j++) totsum[j][b][t] += W[b][t]*partsum[j][n][m];
+        }
+      }
+
+  return totsum;
+}
+
 vector<vector<vector<complex<double>>>> Solver::SpmCorr(Matrix<double, Dynamic, Dynamic> Sminusmat, Eigen::Matrix<double, -1, 1, 0, -1, 1> eigenvalsp, Matrix<double,Dynamic,Dynamic> eigenvecsp, indexstate converttablep, vector<double> beta, vector<double> time)
 {
   //Compute the correlations in the xy plane: SxiSxj + SyiSyj.
@@ -651,6 +814,7 @@ vector<vector<vector<complex<double>>>> Solver::SpmCorr(Matrix<double, Dynamic, 
   double sum0, sumj;
 
   double minval = eigenvals[0];
+  if(eigenvalsp[0] < minval) minval = eigenvalsp[0];
 
   /*for(int n = 0; n < maxIndexValue; n++)
   {

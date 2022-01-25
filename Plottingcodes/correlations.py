@@ -117,12 +117,12 @@ def Spm0Spm1(beta, FM):
     if FM: return 0.5*(1.-np.exp(-4.*beta))/(3.+np.exp(-4.*beta))
     else: return 0.5*(np.exp(-4.*beta)-1.)/(1.+3.*np.exp(-4.*beta))
 
+FM = False
 
-"""
 plt.figure(1)
 plt.plot(beta, corrzreal[1,:,0], 'o', label='Real')
 plt.plot(beta, corrzimag[1,:,0], 'o', label='Imag')
-plt.plot(beta, Sz0Sz1(beta, False), label='Analytical')
+plt.plot(beta, Sz0Sz1(beta, FM), label='Analytical')
 plt.xlabel(r"$\beta$", fontsize=14)
 plt.ylabel(r"Corrz", fontsize=14)
 plt.legend()
@@ -130,18 +130,18 @@ plt.legend()
 plt.figure(2)
 plt.plot(beta, corrpmreal[1,:,0], 'o', label='Real')
 plt.plot(beta, corrpmimag[1,:,0], 'o', label='Imag')
-plt.plot(beta, Spm0Spm1(beta, False), label='Analytical')
+plt.plot(beta, Spm0Spm1(beta, FM), label='Analytical')
 plt.xlabel(r"$\beta$", fontsize=14)
 plt.ylabel(r"Corrpm", fontsize=14)
 plt.legend()
 
 plt.figure(3)
 plt.plot(Zbeta, Z, 'o', label='Numerical')
-plt.plot(Zbeta, 3*np.exp(-4*Zbeta) + 1, label='Analytical')
+plt.plot(Zbeta, (3.+np.exp(-4.*beta))*FM + (3*np.exp(-4*Zbeta) + 1)*(1-FM), label='Analytical')
 plt.xlabel(r"$\beta$", fontsize=14)
 plt.ylabel(r"Z", fontsize=14)
 plt.legend()
-"""
+
 
 plt.figure(4)
 for b in range(len(beta)):
