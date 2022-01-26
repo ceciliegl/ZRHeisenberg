@@ -1,13 +1,13 @@
 import os
 import numpy as np
 
-mainproject = "OneHole"  #Set to zero if only one project.
-project = "AFM"
+mainproject = "NoHoles"  #Set to zero if only one project.
+project = "AFMeven"
 description = "Testing."
 jobname = "myjob"
-time = "24:00:00"
+time = "5:00:00"
 runmin = 0
-runmax = 10
+runmax = 20
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -20,14 +20,14 @@ L      = 6*np.ones(nruns, int)
 nruns  = len(L)
 runmax = runmin + (nruns-1)
 
-Nh = 1*np.ones(nruns, int);
+Nh = 0*np.ones(nruns, int);
 
 #EXCHANGE#
-tl     = 1*np.ones(nruns)
-tr     = 1*np.ones(nruns)
+tl     = 0*np.ones(nruns)
+tr     = tl
 Jzl    = 1*np.ones(nruns)
 Jzr    = Jzl
-Jpml   = 1*np.logspace(0, np.log10(2), nruns)+np.ones(nruns)
+Jpml   = 1*np.linspace(0, 2, nruns) #-(1*np.logspace(0, np.log10(2), nruns)-np.ones(nruns))
 Jpmr   = Jpml
 
 EIGVECS = 1         #Compute eigenvectors?
