@@ -117,7 +117,7 @@ void Solver::solve()
   Matrix<double,Dynamic,Dynamic> eigenvecsp;
   indexstate converttablep;
 
-  vector<double> beta = {0, 0.5, 1, 2, 10, 100};
+  vector<double> beta = {0, 0.5, 1, 2, 10, 100, 200, 500, 1000, 10000};
   vector<double> time = {0};
 
   Nb = beta.size();
