@@ -15,6 +15,7 @@ Jobs/*
 *.o
 *.so
 Code/program
+Code/Makefile
 
 # Packages #
 ############
