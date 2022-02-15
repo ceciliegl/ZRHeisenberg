@@ -2,12 +2,12 @@ import os
 import numpy as np
 
 mainproject = "OneHole"  #Set to zero if only one project.
-project = "FMvaryt"
+project = "L6AFMIsing"
 description = "Testing."
 jobname = "myjob"
 time = "5:00:00"
 runmin = 0
-runmax = 10
+runmax = 3
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -23,11 +23,11 @@ runmax = runmin + (nruns-1)
 Nh = 1*np.ones(nruns, int);
 
 #EXCHANGE#
-tl     = np.linspace(0,1,nruns)
+tl     = np.array([0.1, 1, 10, 100])#np.ones(nruns)
 tr     = tl
-Jzl    = -1*np.ones(nruns)
+Jzl    = 1*np.ones(nruns)
 Jzr    = Jzl
-Jpml   = Jzl #1*np.linspace(0, 1, nruns) #-(1*np.logspace(0, np.log10(2), nruns)-np.ones(nruns))
+Jpml   = np.zeros(nruns) #-(1*np.logspace(0, np.log10(2), nruns)-np.ones(nruns))
 Jpmr   = Jpml
 
 EIGVECS = 1         #Compute eigenvectors?
@@ -53,7 +53,8 @@ runsub = open("Data/" + totalproject + "/run.sub", "w")
 runsub.write("#!/bin/sh\n")
 runsub.write("#SBATCH --account=nn4563k\n")
 runsub.write("#SBATCH --time=" + time + "\n")
-runsub.write("#SBATCH --mem-per-cpu=6999M\n")
+runsub.write("#SBATCH --partition=bigmem\n")
+runsub.write("#SBATCH --mem-per-cpu=16999M\n")
 runsub.write("#SBATCH --ntasks=1\n")
 runsub.write("#SBATCH --signal=B:USR1@60\n")
 
@@ -65,8 +66,8 @@ runsub.write("#SBATCH --job-name="+jobname+"\n")
 runsub.write("#SBATCH --error=stderr.dat\n")
 runsub.write("#SBATCH --output=stdout.dat\n")
 runsub.write("#set -o errexit\n")
-runsub.write("module purge\n")
-runsub.write("module load intel/2019b\n")
+runsub.write("\n")
+runsub.write("\n")
 runsub.write('#cleanup "rsync -av $SCRATCH/ $SUBMITDIR/ --exclude=stdout.dat --exclude=stderr.dat"\n')
 runsub.write("#cd $SUBMITDIR\n")
 runsub.write("#rsync -av $SUBMITDIR/ $SCRATCH/ --exclude=rundir\n")

@@ -117,7 +117,7 @@ void Solver::solve()
   Matrix<double,Dynamic,Dynamic> eigenvecsp;
   indexstate converttablep;
 
-  vector<double> beta = {0, 0.5, 1, 2, 10, 100};
+  vector<double> beta = {0, 0.5, 1, 2, 10, 100, 200, 500, 1000, 10000};
   vector<double> time = {0};
 
   Nb = beta.size();
@@ -136,6 +136,7 @@ void Solver::solve()
   makebasis();
   fillH();
   diagonalise();
+
   mineigvals[0] = eigenvals[0];
   mineigvalspm[0] = eigenvals[0];
   for(int b = 0; b < Nb; b++) partfunc[0][b] = partitionfunction(eigenvals, beta[b]);
@@ -162,6 +163,8 @@ void Solver::solve()
     makebasis();
     fillH();
     diagonalise();
+    //cout << "nu = " << nu << endl;
+    //cout << eigenvecs << endl;
     mineigvals[mynu] = eigenvals[0];
     mineigvalspm[mynu] = (eigenvalsp[0] < eigenvals[0]) ? eigenvalsp[0] : eigenvals[0];
 
