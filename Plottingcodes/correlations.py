@@ -123,7 +123,7 @@ for run_number in run_numbers:
         plt.plot(range(2*L), 0.5*corrpmreal[:,b,0], label=r"$\beta = %.2f$" % beta[b])
     plt.xlabel(r"site $j$")
     plt.ylabel(r"$\frac{1}{2}\langle S^x_{0}S^x_{j} + S^y_{0}S^y_{j} \rangle$")
-    plt.title("One hole, Ising AFM, t = 1")
+    plt.title("One hole, Ising FM, t = 100")
     plt.legend()
 
     plt.figure()
@@ -131,7 +131,7 @@ for run_number in run_numbers:
         plt.plot(range(2*L), corrzreal[:,b,0], label=r"$\beta = %.2f$" % beta[b])
     plt.xlabel(r"site $j$")
     plt.ylabel(r"$\langle S^z_{0}S^z_{j} \rangle$")
-    plt.title("One hole, Ising AFM, t = 1")
+    plt.title("One hole, Ising FM, t = 100")
     plt.legend()
 
 plt.show()

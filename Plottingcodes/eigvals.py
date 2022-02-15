@@ -54,5 +54,5 @@ for run_number in run_numbers:
     plt.hist(eigvals, bins=100)
     plt.xlabel(r"E", fontsize=14)
     plt.ylabel(r"Count", fontsize=14)
-    plt.title("One hole, Ising AFM, t = 1")
+    plt.title("One hole, Ising FM, t = 100")
 plt.show()
