@@ -6,8 +6,8 @@ project = "L3FMIsing"
 description = "Testing."
 jobname = "myjob"
 time = "5:00:00"
-runmin = 100
-runmax = 100
+runmin = 101
+runmax = 101
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -23,7 +23,7 @@ runmax = runmin + (nruns-1)
 Nh = 1*np.ones(nruns, int);
 
 #EXCHANGE#
-tl     = 10*np.ones(nruns)
+tl     = 2*np.ones(nruns)
 tr     = tl
 Jzl    = -1*np.ones(nruns)
 Jzr    = Jzl

@@ -168,7 +168,7 @@ void Solver::solve()
     fillH();
     diagonalise();
     cout << "nu = " << nu << endl;
-    cout << eigenvecs << endl;
+    //cout << eigenvecs << endl;
     mineigvals[mynu] = eigenvals[0];
     mineigvalspm[mynu] = (eigenvalsp[0] < eigenvals[0]) ? eigenvalsp[0] : eigenvals[0];
 
@@ -1102,6 +1102,10 @@ void Solver::resetdatafiles()
 
   ofstream CorrFile(dir + "Corr.txt");
   if (!CorrFile.is_open())
+    cout<<"Could not open file" << endl;
+
+  ofstream GSHoleDensFile(dir + "GSHoleDensity.txt");
+  if (!GSHoleDensFile.is_open())
     cout<<"Could not open file" << endl;
 }
 
