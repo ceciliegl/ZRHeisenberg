@@ -167,7 +167,7 @@ void Solver::solve()
     makebasis();
     fillH();
     diagonalise();
-    cout << "nu = " << nu << endl;
+    //cout << "nu = " << nu << endl;
     //cout << eigenvecs << endl;
     mineigvals[mynu] = eigenvals[0];
     mineigvalspm[mynu] = (eigenvalsp[0] < eigenvals[0]) ? eigenvalsp[0] : eigenvals[0];
