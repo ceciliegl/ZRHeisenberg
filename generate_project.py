@@ -2,12 +2,12 @@ import os
 import numpy as np
 
 mainproject = "OneHole"  #Set to zero if only one project.
-project = "AFMIsingt1"
+project = "L6FMIsing"
 description = "Testing."
 jobname = "myjob"
 time = "5:00:00"
 runmin = 0
-runmax = 0
+runmax = 2
 runsame = 0
 nruns = (runmax-runmin) + 1
 NICE = 11
@@ -23,9 +23,9 @@ runmax = runmin + (nruns-1)
 Nh = 1*np.ones(nruns, int);
 
 #EXCHANGE#
-tl     = np.ones(nruns)
+tl     = np.array([0.1, 1, 10]) #np.ones(nruns)
 tr     = tl
-Jzl    = 1*np.ones(nruns)
+Jzl    = -1*np.ones(nruns)
 Jzr    = Jzl
 Jpml   = 0*np.zeros(nruns) #-(1*np.logspace(0, np.log10(2), nruns)-np.ones(nruns))
 Jpmr   = Jpml
