@@ -40,19 +40,18 @@ for run_number in run_numbers:
 
     eigvals = []
 
-    infile = open("Run" + run_number + "/eigvals.txt", "r")
+    infile = open("Run" + run_number + "/GSHoleDensity.txt", "r")
+
+    GS = 1e9
 
     for line in infile:
-        eigvals += line.split()[1:]
+        words = line.split()
+        if float(words[1]) < GS:
+            GS = float(words[1])
+            HoleDens = [float(i) for i in words[2:]]
 
-    eigvals = [float(i) for i in eigvals]
-
-    print(np.sort(eigvals)[:100])
-
-
-    plt.figure()
-    plt.hist(eigvals, bins=100)
-    plt.xlabel(r"E", fontsize=14)
-    plt.ylabel(r"Count", fontsize=14)
-    plt.title("One hole, Ising FM, t = 100")
+    plt.plot(HoleDens, label = "Run " + run_number)
+    plt.xlabel(r"site $j$", fontsize=14)
+    plt.ylabel(r"Hole density", fontsize=14)
+plt.legend()
 plt.show()

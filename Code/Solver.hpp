@@ -65,10 +65,13 @@ public:
   double Sz2(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
   double S(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
 
+  vector<double> HoleDens(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs);
+
   void WriteEigvals();
   void WriteSzStot();
   void WritePartition(vector<double> beta, vector<double> partition);
   void WriteCorr(vector<double> beta, vector<double> time, vector<vector<vector<complex<double>>>> z, vector<vector<vector<complex<double>>>> pm);
+  void WriteHoleDens();
   void resetdatafiles();
 
 };
@@ -142,6 +145,7 @@ void Solver::solve()
   for(int b = 0; b < Nb; b++) partfunc[0][b] = partitionfunction(eigenvals, beta[b]);
   WriteEigvals();
   WriteSzStot();
+  WriteHoleDens();
   if(CORR)
   {
     cout << "IN CORR FOR nu=0" << endl;
@@ -163,8 +167,8 @@ void Solver::solve()
     makebasis();
     fillH();
     diagonalise();
-    cout << "nu = " << nu << endl;
-    cout << eigenvecs << endl;
+    //cout << "nu = " << nu << endl;
+    //cout << eigenvecs << endl;
     mineigvals[mynu] = eigenvals[0];
     mineigvalspm[mynu] = (eigenvalsp[0] < eigenvals[0]) ? eigenvalsp[0] : eigenvals[0];
 
@@ -172,6 +176,7 @@ void Solver::solve()
 
     WriteEigvals();
     WriteSzStot();
+    WriteHoleDens();
 
     //Compute correlations here!
 
@@ -970,6 +975,33 @@ double Solver::S(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
   return 0.5*(-1+sqrt(1+4*ans));
 }
 
+vector<double> Solver::HoleDens(Eigen::Matrix<double, -1, 1, 0, -1, 1> statecoeffs)
+{
+  //Compute holedensity for statecoeffs at site i.
+
+  vector<double> ans(TWOL, 0.0);
+
+  unsigned int alphanum;
+  double holepos;
+
+  for (int alpha = 0; alpha < maxIndexValue; alpha++)
+  {
+    //Find the holepositions of state alpha.
+    alphanum = converttable.index_to_state[alpha];
+    alphanum /= twomax;
+
+
+    for (int i = 0; i < Nh; i++)
+    {
+      holepos = alphanum/TWOLpow[Nh-1-i];
+      ans[holepos] += statecoeffs[alpha]*statecoeffs[alpha];
+      alphanum %= TWOLpow[Nh-1-i];
+    }
+  }
+
+  return ans;
+}
+
 
 void Solver::WriteEigvals()
 {
@@ -1029,6 +1061,30 @@ void Solver::WritePartition(vector<double> beta, vector<double> partition)
   }
 }
 
+void Solver::WriteHoleDens()
+{
+  //Find and write to file the expectation value of the holedensity at different sites for the ground state of each sector?
+
+  //Need a function which computes the expectation value.
+
+  vector<double> HoleDensvec = HoleDens(eigenvecs.col(0));
+
+  //Then do the writing to file here.
+
+  ofstream Outfile(dir + "GSHoleDensity.txt", std::ios_base::app);
+  if (!Outfile.is_open())
+     cout<<"Could not open file" << endl;
+
+  Outfile << nu << "   " << eigenvals[0] << "   ";
+
+  for (int i = 0; i < TWOL; i++)
+  {
+    Outfile << HoleDensvec[i] << "   ";
+  }
+
+  Outfile << endl;
+}
+
 
 void Solver::resetdatafiles()
 {
@@ -1046,6 +1102,10 @@ void Solver::resetdatafiles()
 
   ofstream CorrFile(dir + "Corr.txt");
   if (!CorrFile.is_open())
+    cout<<"Could not open file" << endl;
+
+  ofstream GSHoleDensFile(dir + "GSHoleDensity.txt");
+  if (!GSHoleDensFile.is_open())
     cout<<"Could not open file" << endl;
 }
 
